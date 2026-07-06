@@ -63,10 +63,15 @@ function extractSceneFromFileName(filePath: string): ParsedScene | null {
   };
 }
 
+function appendFieldValue(current: string | null, value: string): string {
+  return current ? `${current}\n${value}` : value;
+}
+
 export function parseMarkdownScenes(markdown: string, sourcePath: string): ParsedScene[] {
   const lines = markdown.split(/\r?\n/);
   const scenes: ParsedScene[] = [];
   let current: ParsedScene | null = null;
+  let currentCut: ParsedCut | null = null;
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
@@ -82,6 +87,7 @@ export function parseMarkdownScenes(markdown: string, sourcePath: string): Parse
         cuts: []
       };
       scenes.push(current);
+      currentCut = null;
       continue;
     }
 
@@ -98,10 +104,25 @@ export function parseMarkdownScenes(markdown: string, sourcePath: string): Parse
       };
       current.title = line.replace(/^#+\s*/, "").trim();
       scenes.push(current);
+      currentCut = null;
       continue;
     }
 
     if (!current) continue;
+
+    if (currentCut) {
+      const cutSummaryMatch = line.match(/^\s*-\s*(?:画面|映像|内容|アクション|プロンプト|Prompt)[:：]\s*(.+)$/i);
+      if (cutSummaryMatch) {
+        currentCut.summary = appendFieldValue(currentCut.summary, cutSummaryMatch[1].trim());
+        continue;
+      }
+
+      const dialogueMatch = line.match(/^\s*-\s*(?:セリフ|台詞|Dialogue)[:：]\s*(.+)$/i);
+      if (dialogueMatch) {
+        currentCut.dialogue = appendFieldValue(currentCut.dialogue, dialogueMatch[1].trim());
+        continue;
+      }
+    }
 
     const timeMatch = line.match(/^\s*-\s*時間[:：]\s*([0-9:.０-９]+-[0-9:.０-９]+)/);
     if (timeMatch) {
@@ -114,11 +135,12 @@ export function parseMarkdownScenes(markdown: string, sourcePath: string): Parse
       current.summary = summaryMatch[1].trim();
     }
 
+    let matchedCut = false;
     for (const pattern of cutPatterns) {
       const cutMatch = line.match(pattern);
       if (!cutMatch) continue;
       const timeRange = normalizeTimeRange(cutMatch[2]);
-      current.cuts.push({
+      const cut: ParsedCut = {
         cutKey: normalizeDigits(cutMatch[1]),
         timeRange,
         durationSeconds: durationFromRange(timeRange),
@@ -126,9 +148,13 @@ export function parseMarkdownScenes(markdown: string, sourcePath: string): Parse
         summary: null,
         dialogue: null,
         lineNumber: index + 1
-      });
+      };
+      current.cuts.push(cut);
+      currentCut = cut;
+      matchedCut = true;
       break;
     }
+    if (matchedCut) continue;
   }
 
   return scenes;

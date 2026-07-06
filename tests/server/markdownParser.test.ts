@@ -28,7 +28,12 @@ describe("parseMarkdownScenes", () => {
     expect(scenes[0].cuts[0]).toMatchObject({
       cutKey: "1",
       timeRange: "00:00-00:03",
-      cameraLabel: "WIDE"
+      cameraLabel: "WIDE",
+      summary: "空。"
+    });
+    expect(scenes[0].cuts[1]).toMatchObject({
+      cutKey: "2",
+      dialogue: "なし"
     });
   });
 
