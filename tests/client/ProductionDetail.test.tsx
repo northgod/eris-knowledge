@@ -32,4 +32,35 @@ describe("ProductionDetail", () => {
     expect(screen.getByText("G1")).toBeInTheDocument();
     expect(screen.getByText("detected")).toBeInTheDocument();
   });
+
+  it("shows a compact progress summary for list scanning", () => {
+    render(
+      <ProductionDetail
+        production={{
+          id: "story::prod",
+          storyName: "story",
+          productionPath: "prod",
+          absolutePath: "D:\\prod",
+          detectionType: "manual",
+          gates: { G0: "detected", G1: "detected", G2: "missing", G3: "partial", G4: "approved" },
+          sceneCount: 3,
+          cutCount: 9,
+          storyboardSheetCount: 2,
+          videoPromptCount: 1,
+          generatedVideoCount: 0,
+          approvalCount: 1,
+          issueCount: 2,
+          lastContentMtime: "2026-07-05T12:34:56.000Z",
+          checked: true,
+          tags: ["確認済み"]
+        }}
+      />
+    );
+
+    expect(screen.getByText("Updated 2026-07-05")).toBeInTheDocument();
+    expect(screen.getByText("Needs G2, G3")).toBeInTheDocument();
+    expect(screen.getByText("2 issues")).toBeInTheDocument();
+    expect(screen.getByText("checked")).toBeInTheDocument();
+    expect(screen.getByText("確認済み")).toBeInTheDocument();
+  });
 });

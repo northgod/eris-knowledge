@@ -170,6 +170,32 @@ body {
   padding: 8px;
 }
 
+.production-progress-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.production-progress-meta span {
+  background: #f5f7f8;
+  border: 1px solid #e3eaee;
+  border-radius: 999px;
+  color: #1d3844;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 5px 8px;
+}
+
+.production-progress-meta .issue-meta-chip {
+  background: #fff7e8;
+  border-color: #efd39d;
+  color: #6a4d20;
+}
+
 .gate-row {
   display: grid;
   gap: 8px;

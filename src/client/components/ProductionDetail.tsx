@@ -9,6 +9,22 @@ interface ProductionDetailProps {
 
 const gates: GateId[] = ["G0", "G1", "G2", "G3", "G4"];
 
+function updatedLabel(lastContentMtime: string | null): string {
+  return lastContentMtime ? `Updated ${lastContentMtime.slice(0, 10)}` : "No indexed update time";
+}
+
+function needsLabel(production: ProductionSummary): string {
+  const needs = gates.filter((gate) => {
+    const status = production.gates[gate];
+    return status === "missing" || status === "partial";
+  });
+  return needs.length === 0 ? "All gates detected" : `Needs ${needs.join(", ")}`;
+}
+
+function issuesLabel(issueCount: number): string {
+  return issueCount === 1 ? "1 issue" : `${issueCount} issues`;
+}
+
 export function ProductionDetail({ production, selected = false, onSelect }: ProductionDetailProps) {
   const title = `${production.storyName} / ${production.productionPath}`;
 
@@ -24,6 +40,15 @@ export function ProductionDetail({ production, selected = false, onSelect }: Pro
         </span>
       </div>
       <code className="path-line">{production.absolutePath}</code>
+      <div className="production-progress-meta" aria-label="Production progress summary">
+        <span>{updatedLabel(production.lastContentMtime)}</span>
+        <span>{needsLabel(production)}</span>
+        {production.issueCount > 0 && <span className="issue-meta-chip">{issuesLabel(production.issueCount)}</span>}
+        {production.checked && <span>checked</span>}
+        {production.tags.map((tag) => (
+          <span key={tag}>{tag}</span>
+        ))}
+      </div>
       <div className="gate-row">
         {gates.map((gate) => (
           <div className={`gate-chip gate-${production.gates[gate]}`} key={gate}>
