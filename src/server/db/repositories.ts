@@ -376,10 +376,12 @@ export function createRepositories(db: Database.Database) {
         return {
           production,
           scenes: sceneRows.map((scene) => ({ ...scene, cuts: cutsByScene.get(scene.id) ?? [] })),
-          artifacts
+          artifacts,
+          manualNote: createRepositories(db).manual.getNote("production", productionId)
         };
       }
     }
   };
 }
+
 

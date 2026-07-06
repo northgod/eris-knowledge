@@ -1,7 +1,14 @@
 import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ArtifactRecord, ProductionDetailPayload, ProductionSummary } from "../shared/types";
-import { fetchAssets, fetchProductionDetail, fetchProductions, runScan } from "./api";
+import {
+  fetchAssets,
+  fetchProductionDetail,
+  fetchProductions,
+  runScan,
+  saveManualNote,
+  saveManualStatus
+} from "./api";
 import { AssetBrowser } from "./components/AssetBrowser";
 import { Dashboard } from "./components/Dashboard";
 import { NeedsAttention } from "./components/NeedsAttention";
@@ -43,6 +50,33 @@ export function App() {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleSaveNote(note: string) {
+    if (!selectedProductionId) return;
+    try {
+      await saveManualNote("production", selectedProductionId, note);
+      setSelectedDetail((current) => (current ? { ...current, manualNote: note } : current));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }
+
+  async function handleToggleChecked(checked: boolean) {
+    if (!selectedProductionId) return;
+    try {
+      await saveManualStatus("production", selectedProductionId, checked);
+      setSelectedDetail((current) =>
+        current ? { ...current, production: { ...current.production, checked } } : current
+      );
+      setProductions((current) =>
+        current.map((production) =>
+          production.id === selectedProductionId ? { ...production, checked } : production
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
     }
   }
 
@@ -106,7 +140,14 @@ export function App() {
           onSelect={setSelectedProductionId}
         />
       )}
-      {!loading && <ProductionInsightPanel detail={selectedDetail} loading={detailLoading} />}
+      {!loading && (
+        <ProductionInsightPanel
+          detail={selectedDetail}
+          loading={detailLoading}
+          onSaveNote={handleSaveNote}
+          onToggleChecked={handleToggleChecked}
+        />
+      )}
       {!loading && <NeedsAttention productions={productions} />}
       {!loading && <AssetBrowser assets={assets} />}
     </main>

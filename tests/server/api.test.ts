@@ -105,4 +105,37 @@ describe("API", () => {
         expect(res.body.detail.artifacts[0]).toMatchObject({ kind: "text_storyboard", gate: "G1" });
       });
   });
+  it("persists app-local note and checked status without changing source files", async () => {
+    const db = new Database(":memory:");
+    migrate(db);
+    const repos = createRepositories(db);
+    repos.productions.upsert({
+      id: "story::prod",
+      storyName: "story",
+      productionPath: "prod",
+      absolutePath: "D:\\story\\prod",
+      detectionType: "manual",
+      lastContentMtime: null
+    });
+
+    const app = createApp({ db, scarletRoot: "D:\\Scarlet" });
+
+    await request(app)
+      .put("/api/manual/note")
+      .send({ targetType: "production", targetId: "story::prod", note: "G2確認待ち" })
+      .expect(200);
+
+    await request(app)
+      .put("/api/manual/status")
+      .send({ targetType: "production", targetId: "story::prod", status: "checked", checked: true })
+      .expect(200);
+
+    await request(app)
+      .get(`/api/productions/${encodeURIComponent("story::prod")}`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.detail.manualNote).toBe("G2確認待ち");
+        expect(res.body.detail.production.checked).toBe(true);
+      });
+  });
 });

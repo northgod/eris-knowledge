@@ -454,3 +454,59 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+.manual-panel {
+  align-items: stretch;
+  background: #f8fafb;
+  border: 1px solid #e3eaee;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(260px, 1.3fr) auto;
+  margin-bottom: 14px;
+  padding: 12px;
+}
+
+.check-row {
+  align-items: center;
+  color: #1d3844;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 8px;
+  min-height: 38px;
+}
+
+.check-row input {
+  height: 18px;
+  width: 18px;
+}
+
+.note-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.note-field span {
+  color: #63717a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.note-field textarea {
+  border: 1px solid #c7d6dc;
+  border-radius: 8px;
+  color: #172026;
+  font: inherit;
+  min-height: 38px;
+  min-width: 0;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+@media (max-width: 900px) {
+  .manual-panel {
+    grid-template-columns: 1fr;
+  }
+}

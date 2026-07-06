@@ -96,4 +96,6 @@ export interface ProductionDetailPayload {
   production: ProductionSummary;
   scenes: SceneWithCuts[];
   artifacts: ArtifactRecord[];
+  manualNote: string | null;
 }
+

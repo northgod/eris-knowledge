@@ -1,12 +1,21 @@
-import { FileText, ListTree } from "lucide-react";
+import { FileText, ListTree, Save } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { ProductionDetailPayload } from "../../shared/types";
 
 interface ProductionInsightPanelProps {
   detail: ProductionDetailPayload | null;
   loading: boolean;
+  onSaveNote?: (note: string) => void | Promise<void>;
+  onToggleChecked?: (checked: boolean) => void | Promise<void>;
 }
 
-export function ProductionInsightPanel({ detail, loading }: ProductionInsightPanelProps) {
+export function ProductionInsightPanel({ detail, loading, onSaveNote, onToggleChecked }: ProductionInsightPanelProps) {
+  const [noteDraft, setNoteDraft] = useState("");
+
+  useEffect(() => {
+    setNoteDraft(detail?.manualNote ?? "");
+  }, [detail?.production.id, detail?.manualNote]);
+
   if (loading) {
     return (
       <section className="insight-panel">
@@ -38,6 +47,26 @@ export function ProductionInsightPanel({ detail, loading }: ProductionInsightPan
         <span className={`detection-pill detection-${detail.production.detectionType}`}>
           {detail.production.detectionType}
         </span>
+      </div>
+
+      <div className="manual-panel">
+        <label className="check-row">
+          <input
+            type="checkbox"
+            checked={detail.production.checked}
+            aria-label="Mark production checked"
+            onChange={(event) => void onToggleChecked?.(event.currentTarget.checked)}
+          />
+          <span>Checked in eris-knowledge</span>
+        </label>
+        <label className="note-field">
+          <span>Local note</span>
+          <textarea value={noteDraft} onChange={(event) => setNoteDraft(event.currentTarget.value)} />
+        </label>
+        <button className="secondary-button" type="button" onClick={() => void onSaveNote?.(noteDraft)}>
+          <Save size={16} />
+          Save note
+        </button>
       </div>
 
       <div className="insight-columns">

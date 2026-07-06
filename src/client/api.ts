@@ -35,3 +35,17 @@ export async function saveManualNote(targetType: string, targetId: string, note:
   if (!response.ok) throw new Error(`Failed to save note: ${response.status}`);
 }
 
+
+export async function saveManualStatus(targetType: string, targetId: string, checked: boolean): Promise<void> {
+  const response = await fetch("/api/manual/status", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      targetType,
+      targetId,
+      status: checked ? "checked" : "open",
+      checked
+    })
+  });
+  if (!response.ok) throw new Error(`Failed to save status: ${response.status}`);
+}
