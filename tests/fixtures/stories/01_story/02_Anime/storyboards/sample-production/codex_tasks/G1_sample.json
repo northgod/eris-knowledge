@@ -1,0 +1,9 @@
+{
+  "runId": "sample::production",
+  "gateId": "G1",
+  "taskId": "sample-task",
+  "title": "G1 sample",
+  "expectedOutputs": ["02_テキストコンテ.md"],
+  "contextPaths": [],
+  "createdAt": "2026-07-06T00:00:00.000Z"
+}

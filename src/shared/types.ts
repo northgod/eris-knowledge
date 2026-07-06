@@ -1,0 +1,89 @@
+export type DetectionType = "orchestrated" | "manual" | "mixed" | "loose";
+export type GateId = "G0" | "G1" | "G2" | "G3" | "G4";
+export type GateStatus =
+  | "missing"
+  | "detected"
+  | "partial"
+  | "complete"
+  | "approved"
+  | "manual_override";
+
+export type ArtifactKind =
+  | "brief"
+  | "script"
+  | "text_storyboard"
+  | "storyboard_reference"
+  | "storyboard_sheet"
+  | "stage_sketch"
+  | "video_prompt"
+  | "generated_video"
+  | "codex_task"
+  | "approval"
+  | "orchestrator_state"
+  | "markdown"
+  | "json"
+  | "image"
+  | "video"
+  | "unknown";
+
+export interface AppConfig {
+  scarletRoot: string;
+  databasePath: string;
+  port: number;
+}
+
+export interface ProductionSummary {
+  id: string;
+  storyName: string;
+  productionPath: string;
+  absolutePath: string;
+  detectionType: DetectionType;
+  gates: Record<GateId, GateStatus>;
+  sceneCount: number;
+  cutCount: number;
+  storyboardSheetCount: number;
+  videoPromptCount: number;
+  generatedVideoCount: number;
+  approvalCount: number;
+  issueCount: number;
+  lastContentMtime: string | null;
+  checked: boolean;
+  tags: string[];
+}
+
+export interface ArtifactRecord {
+  id: string;
+  productionId: string;
+  kind: ArtifactKind;
+  gate: GateId | null;
+  relativePath: string;
+  absolutePath: string;
+  extension: string;
+  sizeBytes: number;
+  mtime: string;
+  contentHash: string | null;
+}
+
+export interface SceneRecord {
+  id: string;
+  productionId: string;
+  sourceArtifactId: string;
+  sceneKey: string;
+  title: string;
+  timeRange: string | null;
+  durationSeconds: number | null;
+  summary: string | null;
+  lineNumber: number;
+}
+
+export interface CutRecord {
+  id: string;
+  sceneId: string;
+  cutKey: string;
+  timeRange: string | null;
+  durationSeconds: number | null;
+  cameraLabel: string | null;
+  summary: string | null;
+  dialogue: string | null;
+  lineNumber: number;
+}
