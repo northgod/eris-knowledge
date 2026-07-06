@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ArtifactRecord, AssetPreviewPayload, ProductionDetailPayload, ProductionSummary } from "../shared/types";
 import {
@@ -21,16 +21,44 @@ function appendUniqueTag(tags: string[], tag: string): string[] {
   return tags.includes(tag) ? tags : [...tags, tag];
 }
 
+const productionRoutePrefix = "/productions/";
+
+function productionRoute(productionId: string): string {
+  return `${productionRoutePrefix}${encodeURIComponent(productionId)}`;
+}
+
+function productionIdFromPath(pathname: string): string | null {
+  if (!pathname.startsWith(productionRoutePrefix)) {
+    return null;
+  }
+
+  const encodedId = pathname.slice(productionRoutePrefix.length);
+  if (!encodedId) {
+    return null;
+  }
+
+  try {
+    return decodeURIComponent(encodedId);
+  } catch {
+    return null;
+  }
+}
+
 export function App() {
   const [productions, setProductions] = useState<ProductionSummary[]>([]);
   const [assets, setAssets] = useState<ArtifactRecord[]>([]);
   const [selectedProductionId, setSelectedProductionId] = useState<string | null>(null);
+  const [routeProductionId, setRouteProductionId] = useState<string | null>(() =>
+    productionIdFromPath(window.location.pathname)
+  );
   const [selectedDetail, setSelectedDetail] = useState<ProductionDetailPayload | null>(null);
   const [selectedAssetPreview, setSelectedAssetPreview] = useState<AssetPreviewPayload | null>(null);
   const [assetPreviewLoading, setAssetPreviewLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const activeProductionId = routeProductionId ?? selectedProductionId;
+  const isDetailRoute = routeProductionId !== null;
 
   async function load() {
     setLoading(true);
@@ -63,9 +91,9 @@ export function App() {
   }
 
   async function handleSaveNote(note: string) {
-    if (!selectedProductionId) return;
+    if (!activeProductionId) return;
     try {
-      await saveManualNote("production", selectedProductionId, note);
+      await saveManualNote("production", activeProductionId, note);
       setSelectedDetail((current) => (current ? { ...current, manualNote: note } : current));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -73,15 +101,15 @@ export function App() {
   }
 
   async function handleToggleChecked(checked: boolean) {
-    if (!selectedProductionId) return;
+    if (!activeProductionId) return;
     try {
-      await saveManualStatus("production", selectedProductionId, checked);
+      await saveManualStatus("production", activeProductionId, checked);
       setSelectedDetail((current) =>
         current ? { ...current, production: { ...current.production, checked } } : current
       );
       setProductions((current) =>
         current.map((production) =>
-          production.id === selectedProductionId ? { ...production, checked } : production
+          production.id === activeProductionId ? { ...production, checked } : production
         )
       );
     } catch (err) {
@@ -90,12 +118,12 @@ export function App() {
   }
 
   async function handleAddTag(name: string) {
-    if (!selectedProductionId) return;
+    if (!activeProductionId) return;
     const tagName = name.trim();
     if (!tagName) return;
 
     try {
-      await addProductionTag(selectedProductionId, tagName);
+      await addProductionTag(activeProductionId, tagName);
       setSelectedDetail((current) =>
         current
           ? {
@@ -109,7 +137,7 @@ export function App() {
       );
       setProductions((current) =>
         current.map((production) =>
-          production.id === selectedProductionId
+          production.id === activeProductionId
             ? { ...production, tags: appendUniqueTag(production.tags, tagName) }
             : production
         )
@@ -131,15 +159,35 @@ export function App() {
     }
   }
 
-  function handleAttentionSelect(productionId: string) {
+  function navigateToProduction(productionId: string) {
     setSelectedProductionId(productionId);
-    window.requestAnimationFrame(() => {
-      document.getElementById("selected-production-panel")?.scrollIntoView({ block: "start", behavior: "smooth" });
-    });
+    setRouteProductionId(productionId);
+    const nextPath = productionRoute(productionId);
+    if (window.location.pathname !== nextPath) {
+      window.history.pushState(null, "", nextPath);
+    }
+  }
+
+  function navigateToDashboard() {
+    setRouteProductionId(null);
+    if (window.location.pathname !== "/") {
+      window.history.pushState(null, "", "/");
+    }
   }
 
   useEffect(() => {
     void load();
+  }, []);
+
+  useEffect(() => {
+    function handlePopState() {
+      setRouteProductionId(productionIdFromPath(window.location.pathname));
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
   }, []);
 
   useEffect(() => {
@@ -154,14 +202,14 @@ export function App() {
   }, [loading, productions, selectedProductionId]);
 
   useEffect(() => {
-    if (!selectedProductionId) {
+    if (!activeProductionId) {
       setSelectedDetail(null);
       return;
     }
 
     let cancelled = false;
     setDetailLoading(true);
-    fetchProductionDetail(selectedProductionId)
+    fetchProductionDetail(activeProductionId)
       .then((detail) => {
         if (!cancelled) setSelectedDetail(detail);
       })
@@ -175,7 +223,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [selectedProductionId]);
+  }, [activeProductionId]);
 
   const selectedProductionPreview =
     selectedAssetPreview && selectedDetail?.artifacts.some((asset) => asset.id === selectedAssetPreview.id)
@@ -195,40 +243,45 @@ export function App() {
         </button>
       </header>
       {error && <div className="error-banner">{error}</div>}
-      {loading ? <div className="loading">Loading</div> : <Dashboard productions={productions} />}
-      {!loading && (
-        <ProductionList
-          productions={productions}
-          selectedProductionId={selectedProductionId}
-          onSelect={setSelectedProductionId}
-        />
-      )}
-      {!loading && (
-        <ProductionInsightPanel
-          detail={selectedDetail}
-          loading={detailLoading}
-          selectedPreview={selectedProductionPreview}
-          previewLoading={assetPreviewLoading}
-          onSaveNote={handleSaveNote}
-          onToggleChecked={handleToggleChecked}
-          onAddTag={handleAddTag}
-          onPreviewAsset={handlePreviewAsset}
-        />
-      )}
-      {!loading && (
-        <NeedsAttention
-          productions={productions}
-          selectedProductionId={selectedProductionId}
-          onSelect={handleAttentionSelect}
-        />
-      )}
-      {!loading && (
-        <AssetBrowser
-          assets={assets}
-          selectedPreview={selectedAssetPreview}
-          previewLoading={assetPreviewLoading}
-          onPreviewAsset={handlePreviewAsset}
-        />
+      {loading ? (
+        <div className="loading">Loading</div>
+      ) : isDetailRoute ? (
+        <section className="production-detail-screen" aria-label="Selected Production Detail">
+          <button className="secondary-button dashboard-back-button" type="button" onClick={navigateToDashboard}>
+            <ArrowLeft size={16} />
+            Back to Dashboard
+          </button>
+          <ProductionInsightPanel
+            detail={selectedDetail}
+            loading={detailLoading}
+            selectedPreview={selectedProductionPreview}
+            previewLoading={assetPreviewLoading}
+            onSaveNote={handleSaveNote}
+            onToggleChecked={handleToggleChecked}
+            onAddTag={handleAddTag}
+            onPreviewAsset={handlePreviewAsset}
+          />
+        </section>
+      ) : (
+        <>
+          <Dashboard productions={productions} />
+          <ProductionList
+            productions={productions}
+            selectedProductionId={selectedProductionId}
+            onSelect={navigateToProduction}
+          />
+          <NeedsAttention
+            productions={productions}
+            selectedProductionId={selectedProductionId}
+            onSelect={navigateToProduction}
+          />
+          <AssetBrowser
+            assets={assets}
+            selectedPreview={selectedAssetPreview}
+            previewLoading={assetPreviewLoading}
+            onPreviewAsset={handlePreviewAsset}
+          />
+        </>
       )}
     </main>
   );

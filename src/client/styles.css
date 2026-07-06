@@ -361,6 +361,19 @@ body {
   justify-content: center;
 }
 
+.production-detail-screen {
+  display: grid;
+  gap: 14px;
+}
+
+.production-detail-screen .insight-panel {
+  margin-top: 0;
+}
+
+.dashboard-back-button {
+  justify-self: start;
+}
+
 .insight-panel {
   background: white;
   border: 1px solid #d9e1e5;
