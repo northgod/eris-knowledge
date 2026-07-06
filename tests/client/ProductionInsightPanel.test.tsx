@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ProductionInsightPanel } from "../../src/client/components/ProductionInsightPanel";
 import type { ProductionDetailPayload } from "../../src/shared/types";
@@ -91,6 +91,83 @@ describe("ProductionInsightPanel", () => {
     expect(screen.getByText("Scan Issues")).toBeInTheDocument();
     expect(screen.getByText("json_parse_error")).toBeInTheDocument();
     expect(screen.getByText("Invalid JSON")).toBeInTheDocument();
+  });
+  it("shows storyboard thumbnails, video prompts, and generated videos as production asset groups", () => {
+    render(
+      <ProductionInsightPanel
+        loading={false}
+        detail={{
+          production: {
+            id: "story::prod",
+            storyName: "story",
+            productionPath: "prod",
+            absolutePath: "D:\\prod",
+            detectionType: "manual",
+            gates: { G0: "missing", G1: "detected", G2: "detected", G3: "detected", G4: "detected" },
+            sceneCount: 0,
+            cutCount: 0,
+            storyboardSheetCount: 1,
+            videoPromptCount: 1,
+            generatedVideoCount: 1,
+            approvalCount: 0,
+            issueCount: 0,
+            lastContentMtime: null,
+            checked: false,
+            tags: []
+          },
+          manualNote: "",
+          scenes: [],
+          issues: [],
+          artifacts: [
+            {
+              id: "storyboard-1",
+              productionId: "story::prod",
+              kind: "storyboard_sheet",
+              gate: "G2",
+              relativePath: "stories/story/02_Anime/storyboards/prod/storyboard_sheets/sheet_001.png",
+              absolutePath: "D:\\prod\\sheet_001.png",
+              extension: ".png",
+              sizeBytes: 200,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            },
+            {
+              id: "prompt-1",
+              productionId: "story::prod",
+              kind: "video_prompt",
+              gate: "G3",
+              relativePath: "stories/story/02_Anime/storyboards/prod/video_prompts/cut_001.md",
+              absolutePath: "D:\\prod\\cut_001.md",
+              extension: ".md",
+              sizeBytes: 120,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            },
+            {
+              id: "video-1",
+              productionId: "story::prod",
+              kind: "generated_video",
+              gate: "G4",
+              relativePath: "stories/story/02_Anime/storyboards/prod/generated_videos/cut_001.mp4",
+              absolutePath: "D:\\prod\\cut_001.mp4",
+              extension: ".mp4",
+              sizeBytes: 5000,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            }
+          ]
+        }}
+      />
+    );
+
+    const storyboardGallery = screen.getByRole("region", { name: "Storyboard Gallery" });
+    expect(within(storyboardGallery).getByRole("img", {
+      name: "stories/story/02_Anime/storyboards/prod/storyboard_sheets/sheet_001.png"
+    })).toHaveAttribute("src", "/api/assets/storyboard-1/file");
+    const videoPromptList = screen.getByRole("region", { name: "Video Prompt List" });
+    expect(within(videoPromptList).getByText("stories/story/02_Anime/storyboards/prod/video_prompts/cut_001.md")).toBeInTheDocument();
+    const generatedVideos = screen.getByRole("region", { name: "Generated Videos" });
+    expect(within(generatedVideos).getByText("stories/story/02_Anime/storyboards/prod/generated_videos/cut_001.mp4")).toBeInTheDocument();
   });
   it("saves app-local manual note and checked status", () => {
     const onSaveNote = vi.fn();

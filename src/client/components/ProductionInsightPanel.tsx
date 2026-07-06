@@ -1,4 +1,4 @@
-import { AlertTriangle, FileText, ListTree, Save, Tag } from "lucide-react";
+import { AlertTriangle, FileText, Image, ListTree, Save, Tag, Video } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ProductionDetailPayload } from "../../shared/types";
 
@@ -8,6 +8,10 @@ interface ProductionInsightPanelProps {
   onSaveNote?: (note: string) => void | Promise<void>;
   onToggleChecked?: (checked: boolean) => void | Promise<void>;
   onAddTag?: (name: string) => void | Promise<void>;
+}
+
+function assetFileUrl(assetId: string): string {
+  return `/api/assets/${encodeURIComponent(assetId)}/file`;
 }
 
 export function ProductionInsightPanel({
@@ -56,6 +60,9 @@ export function ProductionInsightPanel({
   const assetPreview = detail.artifacts.slice(0, 10);
   const scenePreview = detail.scenes.slice(0, 8);
   const issuePreview = (detail.issues ?? []).slice(0, 20);
+  const storyboardImages = detail.artifacts.filter((asset) => asset.kind === "storyboard_sheet").slice(0, 12);
+  const videoPrompts = detail.artifacts.filter((asset) => asset.kind === "video_prompt").slice(0, 20);
+  const generatedVideos = detail.artifacts.filter((asset) => asset.kind === "generated_video" || asset.kind === "video").slice(0, 20);
   const canAddTag = tagDraft.trim().length > 0;
 
   return (
@@ -162,6 +169,56 @@ export function ProductionInsightPanel({
             </ul>
           )}
         </div>
+      </div>
+
+      <div className="production-asset-groups">
+        <section className="insight-block production-asset-section" aria-label="Storyboard Gallery">
+          <h3><Image size={16} /> Storyboard Gallery</h3>
+          {storyboardImages.length === 0 ? (
+            <p className="quiet-text">No storyboard sheets are indexed for this production.</p>
+          ) : (
+            <div className="storyboard-gallery">
+              {storyboardImages.map((asset) => (
+                <figure key={asset.id}>
+                  <img src={assetFileUrl(asset.id)} alt={asset.relativePath} loading="lazy" />
+                  <figcaption>{asset.relativePath}</figcaption>
+                </figure>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="insight-block production-asset-section" aria-label="Video Prompt List">
+          <h3><FileText size={16} /> Video Prompt List</h3>
+          {videoPrompts.length === 0 ? (
+            <p className="quiet-text">No video prompts are indexed for this production.</p>
+          ) : (
+            <ul className="asset-mini-list">
+              {videoPrompts.map((asset) => (
+                <li key={asset.id}>
+                  <span>{asset.gate ?? "prompt"}</span>
+                  <code>{asset.relativePath}</code>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="insight-block production-asset-section" aria-label="Generated Videos">
+          <h3><Video size={16} /> Generated Videos</h3>
+          {generatedVideos.length === 0 ? (
+            <p className="quiet-text">No generated videos are indexed for this production.</p>
+          ) : (
+            <ul className="asset-mini-list">
+              {generatedVideos.map((asset) => (
+                <li key={asset.id}>
+                  <span>{asset.gate ?? "video"}</span>
+                  <code>{asset.relativePath}</code>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
 
       <div className="insight-block scan-issues-block">
