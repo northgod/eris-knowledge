@@ -54,6 +54,15 @@ export interface SceneUpsert {
   }>;
 }
 
+export interface ScanIssueUpsert {
+  id: string;
+  scanRunId: string | null;
+  severity: string;
+  relativePath: string;
+  issueCode: string;
+  message: string;
+}
+
 export function stableId(input: string): string {
   return crypto.createHash("sha1").update(input).digest("hex");
 }
@@ -342,6 +351,19 @@ export function createRepositories(db: Database.Database) {
         db.prepare(`
           DELETE FROM taggings WHERE tag_id = @tagId AND target_type = @targetType AND target_id = @targetId
         `).run(input);
+      }
+    },
+    scanIssues: {
+      replaceAll(issues: ScanIssueUpsert[]) {
+        const tx = db.transaction(() => {
+          db.prepare("DELETE FROM scan_issues").run();
+          const insert = db.prepare(`
+            INSERT INTO scan_issues (id, scan_run_id, severity, relative_path, issue_code, message)
+            VALUES (@id, @scanRunId, @severity, @relativePath, @issueCode, @message)
+          `);
+          for (const issue of issues) insert.run(issue);
+        });
+        tx();
       }
     },
     api: {

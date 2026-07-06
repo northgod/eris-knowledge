@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type Database from "better-sqlite3";
-import { createRepositories, stableId, type ArtifactUpsert } from "../db/repositories";
+import { createRepositories, stableId, type ArtifactUpsert, type ScanIssueUpsert } from "../db/repositories";
 import { classifyArtifact } from "../scanner/artifactClassifier";
 import { detectProductions } from "../scanner/productionDetector";
 import { parseApprovalMarkdown } from "../parser/approvalParser";
@@ -32,9 +32,31 @@ async function artifactFromPath(root: string, productionId: string, relativePath
   };
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function issueFromError(input: {
+  scanRunId: string | null;
+  artifact: ArtifactUpsert;
+  issueCode: string;
+  messagePrefix: string;
+  error: unknown;
+}): ScanIssueUpsert {
+  return {
+    id: stableId(`scan_issue:${input.issueCode}:${input.artifact.relativePath}`),
+    scanRunId: input.scanRunId,
+    severity: "error",
+    relativePath: input.artifact.relativePath,
+    issueCode: input.issueCode,
+    message: `${input.messagePrefix}: ${errorMessage(input.error)}`
+  };
+}
+
 export async function indexRoot(input: IndexRootInput): Promise<void> {
   const repos = createRepositories(input.db);
   const productions = await detectProductions(input.root);
+  const scanIssues: ScanIssueUpsert[] = [];
 
   for (const production of productions) {
     const artifacts = await Promise.all(
@@ -58,55 +80,75 @@ export async function indexRoot(input: IndexRootInput): Promise<void> {
 
     for (const artifact of artifacts) {
       if (artifact.extension === ".md") {
-        const markdown = await fs.readFile(artifact.absolutePath, "utf8");
-        const scenes = parseMarkdownScenes(markdown, artifact.relativePath);
-        for (const scene of scenes) {
-          parsedScenes.push({
-            id: stableId(`scene:${artifact.id}:${scene.sceneKey}:${scene.lineNumber}`),
-            sourceArtifactId: artifact.id,
-            sceneKey: scene.sceneKey,
-            title: scene.title,
-            timeRange: scene.timeRange,
-            durationSeconds: scene.durationSeconds,
-            summary: scene.summary,
-            lineNumber: scene.lineNumber,
-            cuts: scene.cuts.map((cut) => ({
-              id: stableId(`cut:${artifact.id}:${scene.sceneKey}:${cut.cutKey}:${cut.lineNumber}`),
-              ...cut
-            }))
-          });
-        }
-        if (artifact.kind === "approval") {
-          const approval = parseApprovalMarkdown(markdown);
-          parsedApprovals.push({
-            id: stableId(`approval:${artifact.id}`),
-            productionId: production.id,
-            artifactId: artifact.id,
-            gateId: approval.gateId,
-            approvalId: approval.approvalId,
-            status: approval.status,
-            decision: approval.decision,
-            actor: approval.actor,
-            decidedAt: approval.decidedAt
-          });
+        try {
+          const markdown = await fs.readFile(artifact.absolutePath, "utf8");
+          const scenes = parseMarkdownScenes(markdown, artifact.relativePath);
+          for (const scene of scenes) {
+            parsedScenes.push({
+              id: stableId(`scene:${artifact.id}:${scene.sceneKey}:${scene.lineNumber}`),
+              sourceArtifactId: artifact.id,
+              sceneKey: scene.sceneKey,
+              title: scene.title,
+              timeRange: scene.timeRange,
+              durationSeconds: scene.durationSeconds,
+              summary: scene.summary,
+              lineNumber: scene.lineNumber,
+              cuts: scene.cuts.map((cut) => ({
+                id: stableId(`cut:${artifact.id}:${scene.sceneKey}:${cut.cutKey}:${cut.lineNumber}`),
+                ...cut
+              }))
+            });
+          }
+          if (artifact.kind === "approval") {
+            const approval = parseApprovalMarkdown(markdown);
+            parsedApprovals.push({
+              id: stableId(`approval:${artifact.id}`),
+              productionId: production.id,
+              artifactId: artifact.id,
+              gateId: approval.gateId,
+              approvalId: approval.approvalId,
+              status: approval.status,
+              decision: approval.decision,
+              actor: approval.actor,
+              decidedAt: approval.decidedAt
+            });
+          }
+        } catch (error) {
+          scanIssues.push(issueFromError({
+            scanRunId: input.scanRootLabel,
+            artifact,
+            issueCode: "markdown_read_error",
+            messagePrefix: "Markdown read error",
+            error
+          }));
         }
       }
 
       if (artifact.kind === "codex_task") {
-        const task = parseCodexTask(await fs.readFile(artifact.absolutePath, "utf8"));
-        parsedTasks.push({
-          id: stableId(`task:${artifact.id}`),
-          productionId: production.id,
-          artifactId: artifact.id,
-          runId: task.runId,
-          gateId: task.gateId,
-          taskId: task.taskId,
-          title: task.title,
-          status: task.status,
-          expectedOutputsJson: JSON.stringify(task.expectedOutputs),
-          contextPathsJson: JSON.stringify(task.contextPaths),
-          createdAt: task.createdAt
-        });
+        try {
+          const task = parseCodexTask(await fs.readFile(artifact.absolutePath, "utf8"));
+          parsedTasks.push({
+            id: stableId(`task:${artifact.id}`),
+            productionId: production.id,
+            artifactId: artifact.id,
+            runId: task.runId,
+            gateId: task.gateId,
+            taskId: task.taskId,
+            title: task.title,
+            status: task.status,
+            expectedOutputsJson: JSON.stringify(task.expectedOutputs),
+            contextPathsJson: JSON.stringify(task.contextPaths),
+            createdAt: task.createdAt
+          });
+        } catch (error) {
+          scanIssues.push(issueFromError({
+            scanRunId: input.scanRootLabel,
+            artifact,
+            issueCode: "json_parse_error",
+            messagePrefix: "JSON parse error",
+            error
+          }));
+        }
       }
     }
 
@@ -114,4 +156,6 @@ export async function indexRoot(input: IndexRootInput): Promise<void> {
     repos.orchestrator.replaceTasks(production.id, parsedTasks);
     repos.orchestrator.replaceApprovals(production.id, parsedApprovals);
   }
+
+  repos.scanIssues.replaceAll(scanIssues);
 }
