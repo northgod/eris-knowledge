@@ -9,8 +9,18 @@ interface AssetBrowserProps {
   onPreviewAsset?: (assetId: string) => void | Promise<void>;
 }
 
+const imageExtensions = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
+
 function uniqueSorted(values: Array<string | null>): string[] {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value)))).sort();
+}
+
+function isImageAsset(asset: ArtifactRecord): boolean {
+  return imageExtensions.has(asset.extension.toLowerCase()) || asset.kind === "storyboard_sheet" || asset.kind === "image";
+}
+
+function assetFileUrl(assetId: string): string {
+  return `/api/assets/${encodeURIComponent(assetId)}/file`;
 }
 
 export function AssetBrowser({
@@ -106,7 +116,17 @@ export function AssetBrowser({
               <tr key={asset.id}>
                 <td>{asset.kind}</td>
                 <td>{asset.gate ?? "-"}</td>
-                <td><code>{asset.relativePath}</code></td>
+                <td className="asset-path-cell">
+                  {isImageAsset(asset) && (
+                    <img
+                      className="asset-thumbnail"
+                      src={assetFileUrl(asset.id)}
+                      alt={asset.relativePath}
+                      loading="lazy"
+                    />
+                  )}
+                  <code>{asset.relativePath}</code>
+                </td>
                 <td>{asset.sizeBytes}</td>
                 <td>
                   <button
@@ -148,4 +168,3 @@ export function AssetBrowser({
     </section>
   );
 }
-

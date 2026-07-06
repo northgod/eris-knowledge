@@ -187,5 +187,50 @@ describe("API", () => {
         });
       });
   });
+  it("serves indexed image assets as read-only files", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "eris-image-"));
+    const imagePath = path.join(tempDir, "sheet_001.png");
+    const pngBytes = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+      "base64"
+    );
+    fs.writeFileSync(imagePath, pngBytes);
+
+    const db = new Database(":memory:");
+    migrate(db);
+    const repos = createRepositories(db);
+    repos.productions.upsert({
+      id: "story::prod",
+      storyName: "story",
+      productionPath: "prod",
+      absolutePath: tempDir,
+      detectionType: "manual",
+      lastContentMtime: null
+    });
+    repos.artifacts.replaceForProduction("story::prod", [
+      {
+        id: "artifact-image",
+        productionId: "story::prod",
+        kind: "storyboard_sheet",
+        gate: "G2",
+        relativePath: "stories/story/02_Anime/storyboards/prod/storyboard_sheets/sheet_001.png",
+        absolutePath: imagePath,
+        extension: ".png",
+        sizeBytes: pngBytes.length,
+        mtime: "2026-07-06T00:00:00.000Z",
+        contentHash: null
+      }
+    ]);
+
+    const app = createApp({ db, scarletRoot: tempDir });
+
+    await request(app)
+      .get(`/api/assets/${encodeURIComponent("artifact-image")}/file`)
+      .expect("Content-Type", /image\/png/)
+      .expect(200)
+      .expect((res) => {
+        expect(Buffer.compare(res.body as Buffer, pngBytes)).toBe(0);
+      });
+  });
 });
 

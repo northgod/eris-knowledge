@@ -13,6 +13,7 @@ export interface RouteContext {
 
 const TEXT_PREVIEW_LIMIT = 20_000;
 const TEXT_PREVIEW_EXTENSIONS = new Set([".md", ".json", ".txt", ".csv", ".tsv", ".log"]);
+const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
 const TEXT_PREVIEW_KINDS = new Set([
   "brief",
   "script",
@@ -33,6 +34,10 @@ function isInsideRoot(root: string, target: string): boolean {
 
 function isTextPreviewable(asset: ArtifactRecord): boolean {
   return TEXT_PREVIEW_EXTENSIONS.has(asset.extension.toLowerCase()) || TEXT_PREVIEW_KINDS.has(asset.kind);
+}
+
+function isImageAsset(asset: ArtifactRecord): boolean {
+  return IMAGE_EXTENSIONS.has(asset.extension.toLowerCase()) || asset.kind === "storyboard_sheet" || asset.kind === "image";
 }
 
 async function createAssetPreview(asset: ArtifactRecord): Promise<AssetPreviewPayload> {
@@ -91,6 +96,26 @@ export function createRoutes(context: RouteContext): Router {
 
   router.get("/assets", (_req, res) => {
     res.json({ assets: repos.api.artifacts() });
+  });
+
+  router.get("/assets/:id/file", (req, res, next) => {
+    const asset = repos.api.artifactById(req.params.id);
+    if (!asset) {
+      res.status(404).json({ error: "Asset not found" });
+      return;
+    }
+    if (!isInsideRoot(context.scarletRoot, asset.absolutePath)) {
+      res.status(403).json({ error: "Asset is outside the configured read-only root" });
+      return;
+    }
+    if (!isImageAsset(asset)) {
+      res.status(415).json({ error: "Inline file serving is only enabled for image assets" });
+      return;
+    }
+
+    res.sendFile(asset.absolutePath, { headers: { "Cache-Control": "no-store" } }, (error) => {
+      if (error) next(error);
+    });
   });
 
   router.get("/assets/:id/preview", async (req, res, next) => {
@@ -178,4 +203,3 @@ export function createRoutes(context: RouteContext): Router {
 
   return router;
 }
-

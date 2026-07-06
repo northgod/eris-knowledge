@@ -62,6 +62,17 @@ describe("AssetBrowser", () => {
     const rows = table.getAllByRole("row");
     expect(rows).toHaveLength(2);
   });
+
+  it("renders image thumbnails from the read-only asset file endpoint", () => {
+    render(<AssetBrowser assets={assets} />);
+
+    const thumbnail = screen.getByRole("img", {
+      name: "stories/story/02_Anime/storyboards/EP2/01b/storyboard_sheets/sheet_001.png"
+    });
+
+    expect(thumbnail).toHaveAttribute("src", "/api/assets/asset-1/file");
+  });
+
   it("requests and renders a read-only text preview for an asset", () => {
     const onPreviewAsset = vi.fn();
     render(
@@ -95,4 +106,3 @@ describe("AssetBrowser", () => {
     expect(screen.getByText("stories/story/02_Anime/storyboards/EP2/01b/video_prompts/cut_001.md")).toBeInTheDocument();
   });
 });
-
