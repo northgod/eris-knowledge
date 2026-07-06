@@ -1,4 +1,4 @@
-import { FileText, ListTree, Save } from "lucide-react";
+import { FileText, ListTree, Save, Tag } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ProductionDetailPayload } from "../../shared/types";
 
@@ -7,14 +7,33 @@ interface ProductionInsightPanelProps {
   loading: boolean;
   onSaveNote?: (note: string) => void | Promise<void>;
   onToggleChecked?: (checked: boolean) => void | Promise<void>;
+  onAddTag?: (name: string) => void | Promise<void>;
 }
 
-export function ProductionInsightPanel({ detail, loading, onSaveNote, onToggleChecked }: ProductionInsightPanelProps) {
+export function ProductionInsightPanel({
+  detail,
+  loading,
+  onSaveNote,
+  onToggleChecked,
+  onAddTag
+}: ProductionInsightPanelProps) {
   const [noteDraft, setNoteDraft] = useState("");
+  const [tagDraft, setTagDraft] = useState("");
 
   useEffect(() => {
     setNoteDraft(detail?.manualNote ?? "");
   }, [detail?.production.id, detail?.manualNote]);
+
+  useEffect(() => {
+    setTagDraft("");
+  }, [detail?.production.id]);
+
+  async function handleAddTag() {
+    const tagName = tagDraft.trim();
+    if (!tagName) return;
+    setTagDraft("");
+    await onAddTag?.(tagName);
+  }
 
   if (loading) {
     return (
@@ -36,6 +55,7 @@ export function ProductionInsightPanel({ detail, loading, onSaveNote, onToggleCh
 
   const assetPreview = detail.artifacts.slice(0, 10);
   const scenePreview = detail.scenes.slice(0, 8);
+  const canAddTag = tagDraft.trim().length > 0;
 
   return (
     <section className="insight-panel" id="selected-production-panel">
@@ -66,6 +86,36 @@ export function ProductionInsightPanel({ detail, loading, onSaveNote, onToggleCh
         <button className="secondary-button" type="button" onClick={() => void onSaveNote?.(noteDraft)}>
           <Save size={16} />
           Save note
+        </button>
+      </div>
+
+      <div className="tag-panel">
+        <div className="tag-list" aria-label="Production tags">
+          {detail.production.tags.length === 0 ? (
+            <span className="quiet-text">No local tags</span>
+          ) : (
+            detail.production.tags.map((tag) => (
+              <span className="tag-chip" key={tag}>{tag}</span>
+            ))
+          )}
+        </div>
+        <label className="tag-field">
+          <span>New tag</span>
+          <input
+            aria-label="New tag"
+            value={tagDraft}
+            onChange={(event) => setTagDraft(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void handleAddTag();
+              }
+            }}
+          />
+        </label>
+        <button className="secondary-button" type="button" disabled={!canAddTag} onClick={() => void handleAddTag()}>
+          <Tag size={16} />
+          Add tag
         </button>
       </div>
 

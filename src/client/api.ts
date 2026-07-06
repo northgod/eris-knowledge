@@ -35,7 +35,6 @@ export async function saveManualNote(targetType: string, targetId: string, note:
   if (!response.ok) throw new Error(`Failed to save note: ${response.status}`);
 }
 
-
 export async function saveManualStatus(targetType: string, targetId: string, checked: boolean): Promise<void> {
   const response = await fetch("/api/manual/status", {
     method: "PUT",
@@ -49,3 +48,31 @@ export async function saveManualStatus(targetType: string, targetId: string, che
   });
   if (!response.ok) throw new Error(`Failed to save status: ${response.status}`);
 }
+
+export async function createTag(name: string, color = "#315c6f"): Promise<string> {
+  const response = await fetch("/api/tags", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, color })
+  });
+  if (!response.ok) throw new Error(`Failed to create tag: ${response.status}`);
+  const data = (await response.json()) as { id: string };
+  return data.id;
+}
+
+export async function tagTarget(tagId: string, targetType: string, targetId: string): Promise<void> {
+  const response = await fetch("/api/taggings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tagId, targetType, targetId })
+  });
+  if (!response.ok) throw new Error(`Failed to tag target: ${response.status}`);
+}
+
+export async function addProductionTag(productionId: string, name: string): Promise<void> {
+  const tagName = name.trim();
+  if (!tagName) return;
+  const tagId = await createTag(tagName);
+  await tagTarget(tagId, "production", productionId);
+}
+

@@ -119,4 +119,43 @@ describe("ProductionInsightPanel", () => {
     expect(onSaveNote).toHaveBeenCalledWith("G3素材確認");
     expect(onToggleChecked).toHaveBeenCalledWith(true);
   });
+  it("shows and adds app-local tags for selected production", () => {
+    const onAddTag = vi.fn();
+    render(
+      <ProductionInsightPanel
+        loading={false}
+        detail={{
+          production: {
+            id: "story::prod",
+            storyName: "story",
+            productionPath: "prod",
+            absolutePath: "D:\\prod",
+            detectionType: "manual",
+            gates: { G0: "missing", G1: "detected", G2: "missing", G3: "missing", G4: "missing" },
+            sceneCount: 0,
+            cutCount: 0,
+            storyboardSheetCount: 0,
+            videoPromptCount: 0,
+            generatedVideoCount: 0,
+            approvalCount: 0,
+            issueCount: 0,
+            lastContentMtime: null,
+            checked: false,
+            tags: ["G2待ち"]
+          },
+          manualNote: "",
+          scenes: [],
+          artifacts: []
+        }}
+        onAddTag={onAddTag}
+      />
+    );
+
+    expect(screen.getByText("G2待ち")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("New tag"), { target: { value: "優先確認" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+
+    expect(onAddTag).toHaveBeenCalledWith("優先確認");
+  });
 });
+

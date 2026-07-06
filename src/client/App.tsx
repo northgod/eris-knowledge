@@ -2,6 +2,7 @@ import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ArtifactRecord, ProductionDetailPayload, ProductionSummary } from "../shared/types";
 import {
+  addProductionTag,
   fetchAssets,
   fetchProductionDetail,
   fetchProductions,
@@ -14,6 +15,10 @@ import { Dashboard } from "./components/Dashboard";
 import { NeedsAttention } from "./components/NeedsAttention";
 import { ProductionInsightPanel } from "./components/ProductionInsightPanel";
 import { ProductionList } from "./components/ProductionList";
+
+function appendUniqueTag(tags: string[], tag: string): string[] {
+  return tags.includes(tag) ? tags : [...tags, tag];
+}
 
 export function App() {
   const [productions, setProductions] = useState<ProductionSummary[]>([]);
@@ -73,6 +78,36 @@ export function App() {
       setProductions((current) =>
         current.map((production) =>
           production.id === selectedProductionId ? { ...production, checked } : production
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }
+
+  async function handleAddTag(name: string) {
+    if (!selectedProductionId) return;
+    const tagName = name.trim();
+    if (!tagName) return;
+
+    try {
+      await addProductionTag(selectedProductionId, tagName);
+      setSelectedDetail((current) =>
+        current
+          ? {
+              ...current,
+              production: {
+                ...current.production,
+                tags: appendUniqueTag(current.production.tags, tagName)
+              }
+            }
+          : current
+      );
+      setProductions((current) =>
+        current.map((production) =>
+          production.id === selectedProductionId
+            ? { ...production, tags: appendUniqueTag(production.tags, tagName) }
+            : production
         )
       );
     } catch (err) {
@@ -153,6 +188,7 @@ export function App() {
           loading={detailLoading}
           onSaveNote={handleSaveNote}
           onToggleChecked={handleToggleChecked}
+          onAddTag={handleAddTag}
         />
       )}
       {!loading && (
