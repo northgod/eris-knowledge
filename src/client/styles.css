@@ -916,6 +916,7 @@ body {
   }
 }
 
+.orchestrator-block,
 .scan-issues-block {
   margin-top: 14px;
 }

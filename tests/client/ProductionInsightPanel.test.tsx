@@ -212,6 +212,82 @@ describe("ProductionInsightPanel", () => {
     const generatedVideos = screen.getByRole("region", { name: "Generated Videos" });
     expect(within(generatedVideos).getByText("stories/story/02_Anime/storyboards/prod/generated_videos/cut_001.mp4")).toBeInTheDocument();
   });
+  it("shows orchestrator task, approval, and state records as a dedicated group", () => {
+    render(
+      <ProductionInsightPanel
+        loading={false}
+        detail={{
+          production: {
+            id: "story::prod",
+            storyName: "story",
+            productionPath: "prod",
+            absolutePath: "D:\\prod",
+            detectionType: "mixed",
+            gates: { G0: "missing", G1: "detected", G2: "detected", G3: "missing", G4: "missing" },
+            sceneCount: 0,
+            cutCount: 0,
+            storyboardSheetCount: 0,
+            videoPromptCount: 0,
+            generatedVideoCount: 0,
+            approvalCount: 1,
+            issueCount: 0,
+            lastContentMtime: null,
+            checked: false,
+            tags: []
+          },
+          manualNote: "",
+          scenes: [],
+          issues: [],
+          artifacts: [
+            {
+              id: "task-1",
+              productionId: "story::prod",
+              kind: "codex_task",
+              gate: "G1",
+              relativePath: "stories/story/02_Anime/storyboards/prod/codex_tasks/G1_task.json",
+              absolutePath: "D:\\prod\\G1_task.json",
+              extension: ".json",
+              sizeBytes: 300,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            },
+            {
+              id: "approval-1",
+              productionId: "story::prod",
+              kind: "approval",
+              gate: "G2",
+              relativePath: "stories/story/02_Anime/storyboards/prod/approvals/G2_approval.md",
+              absolutePath: "D:\\prod\\G2_approval.md",
+              extension: ".md",
+              sizeBytes: 140,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            },
+            {
+              id: "state-1",
+              productionId: "story::prod",
+              kind: "orchestrator_state",
+              gate: null,
+              relativePath: "stories/story/02_Anime/storyboards/prod/orchestrator/state.json",
+              absolutePath: "D:\\prod\\state.json",
+              extension: ".json",
+              sizeBytes: 200,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            }
+          ]
+        }}
+      />
+    );
+
+    const orchestratorRecords = screen.getByRole("region", { name: "Orchestrator Records" });
+    expect(within(orchestratorRecords).getByText("codex_task")).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByText("stories/story/02_Anime/storyboards/prod/codex_tasks/G1_task.json")).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByText("approval")).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByText("stories/story/02_Anime/storyboards/prod/approvals/G2_approval.md")).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByText("orchestrator_state")).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByText("stories/story/02_Anime/storyboards/prod/orchestrator/state.json")).toBeInTheDocument();
+  });
   it("saves app-local manual note and checked status", () => {
     const onSaveNote = vi.fn();
     const onToggleChecked = vi.fn();

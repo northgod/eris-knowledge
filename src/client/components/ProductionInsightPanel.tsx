@@ -65,6 +65,9 @@ export function ProductionInsightPanel({
   const storyboardImages = detail.artifacts.filter((asset) => asset.kind === "storyboard_sheet").slice(0, 12);
   const videoPrompts = detail.artifacts.filter((asset) => asset.kind === "video_prompt").slice(0, 20);
   const generatedVideos = detail.artifacts.filter((asset) => asset.kind === "generated_video" || asset.kind === "video").slice(0, 20);
+  const orchestratorArtifacts = detail.artifacts
+    .filter((asset) => asset.kind === "codex_task" || asset.kind === "approval" || asset.kind === "orchestrator_state")
+    .slice(0, 20);
   const canAddTag = tagDraft.trim().length > 0;
 
   return (
@@ -234,6 +237,22 @@ export function ProductionInsightPanel({
           )}
         </section>
       </div>
+
+      <section className="insight-block orchestrator-block" aria-label="Orchestrator Records">
+        <h3><FileText size={16} /> Orchestrator Records</h3>
+        {orchestratorArtifacts.length === 0 ? (
+          <p className="quiet-text">No orchestrator task, approval, or state records are indexed for this production.</p>
+        ) : (
+          <ul className="asset-mini-list">
+            {orchestratorArtifacts.map((asset) => (
+              <li key={asset.id}>
+                <span>{asset.kind}</span>
+                <code>{asset.relativePath}</code>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <div className="insight-block scan-issues-block">
         <h3><AlertTriangle size={16} /> Scan Issues</h3>
