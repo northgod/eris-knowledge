@@ -106,10 +106,20 @@ export interface SceneWithCuts extends SceneRecord {
   cuts: CutRecord[];
 }
 
+export interface ScanIssueRecord {
+  id: string;
+  scanRunId: string | null;
+  severity: string;
+  relativePath: string;
+  issueCode: string;
+  message: string;
+}
+
 export interface ProductionDetailPayload {
   production: ProductionSummary;
   scenes: SceneWithCuts[];
   artifacts: ArtifactRecord[];
   manualNote: string | null;
+  issues: ScanIssueRecord[];
 }
 

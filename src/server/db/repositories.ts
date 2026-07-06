@@ -1,6 +1,15 @@
 import crypto from "node:crypto";
 import type Database from "better-sqlite3";
-import type { ArtifactRecord, CutRecord, DetectionType, GateId, GateStatus, ProductionDetailPayload, SceneRecord } from "../../shared/types";
+import type {
+  ArtifactRecord,
+  CutRecord,
+  DetectionType,
+  GateId,
+  GateStatus,
+  ProductionDetailPayload,
+  ScanIssueRecord,
+  SceneRecord
+} from "../../shared/types";
 
 export interface ProductionUpsert {
   id: string;
@@ -48,7 +57,44 @@ export interface SceneUpsert {
 export function stableId(input: string): string {
   return crypto.createHash("sha1").update(input).digest("hex");
 }
+interface ProductionIssueScope {
+  storyName: string;
+  productionPath: string;
+}
 
+function normalizePathForMatch(value: string): string {
+  return value.replace(/\\/g, "/");
+}
+
+function issueBelongsToProduction(relativePath: string, production: ProductionIssueScope): boolean {
+  const normalizedPath = normalizePathForMatch(relativePath);
+  const productionPath = normalizePathForMatch(production.productionPath);
+  const storyName = normalizePathForMatch(production.storyName);
+  const roots = [
+    productionPath,
+    `stories/${storyName}/02_Anime/storyboards/${productionPath}`
+  ];
+
+  return roots.some((root) => normalizedPath === root || normalizedPath.startsWith(`${root}/`));
+}
+
+function listScanIssues(db: Database.Database): ScanIssueRecord[] {
+  return db.prepare(`
+    SELECT
+      id,
+      scan_run_id AS scanRunId,
+      severity,
+      relative_path AS relativePath,
+      issue_code AS issueCode,
+      message
+    FROM scan_issues
+    ORDER BY relative_path, issue_code, id
+  `).all() as ScanIssueRecord[];
+}
+
+function scanIssuesForProduction(db: Database.Database, production: ProductionIssueScope): ScanIssueRecord[] {
+  return listScanIssues(db).filter((issue) => issueBelongsToProduction(issue.relativePath, production));
+}
 export function createRepositories(db: Database.Database) {
   return {
     productions: {
@@ -110,7 +156,7 @@ export function createRepositories(db: Database.Database) {
           WHERE scene_id IN (SELECT id FROM scenes WHERE production_id = ?)
         `);
         const approvalCount = db.prepare("SELECT COUNT(*) AS count FROM approvals WHERE production_id = ?");
-        const issueCount = db.prepare("SELECT COUNT(*) AS count FROM scan_issues WHERE relative_path LIKE ?");
+        const scanIssues = listScanIssues(db);
         const manualStatus = db.prepare(`
           SELECT checked FROM manual_statuses WHERE target_type = 'production' AND target_id = ?
         `);
@@ -150,7 +196,7 @@ export function createRepositories(db: Database.Database) {
             videoPromptCount: kindCounts.video_prompt ?? 0,
             generatedVideoCount: kindCounts.generated_video ?? 0,
             approvalCount: (approvalCount.get(row.id) as { count: number }).count,
-            issueCount: (issueCount.get(`${row.productionPath}%`) as { count: number }).count,
+            issueCount: scanIssues.filter((issue) => issueBelongsToProduction(issue.relativePath, row)).length,
             checked: Boolean(checkedRow?.checked),
             tags: (tags.all(row.id) as Array<{ name: string }>).map((tag) => tag.name)
           };
@@ -395,7 +441,8 @@ export function createRepositories(db: Database.Database) {
           production,
           scenes: sceneRows.map((scene) => ({ ...scene, cuts: cutsByScene.get(scene.id) ?? [] })),
           artifacts,
-          manualNote: createRepositories(db).manual.getNote("production", productionId)
+          manualNote: createRepositories(db).manual.getNote("production", productionId),
+          issues: scanIssuesForProduction(db, production)
         };
       }
     }

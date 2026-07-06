@@ -96,16 +96,47 @@ describe("API", () => {
       }
     ]);
 
+    db.prepare(`
+      INSERT INTO scan_issues (id, scan_run_id, severity, relative_path, issue_code, message)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      "issue-1",
+      "scan-1",
+      "error",
+      "stories/story/02_Anime/storyboards/prod/broken.json",
+      "json_parse_error",
+      "Invalid JSON"
+    );
+    db.prepare(`
+      INSERT INTO scan_issues (id, scan_run_id, severity, relative_path, issue_code, message)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      "issue-other",
+      "scan-1",
+      "warning",
+      "stories/story/02_Anime/storyboards/other/file.md",
+      "markdown_unknown",
+      "Unrelated issue"
+    );
     const app = createApp({ db, scarletRoot: "D:\\Scarlet" });
 
     await request(app)
       .get(`/api/productions/${encodeURIComponent("story::prod")}`)
       .expect(200)
       .expect((res) => {
-        expect(res.body.detail.production).toMatchObject({ id: "story::prod", sceneCount: 1, cutCount: 1 });
+        expect(res.body.detail.production).toMatchObject({ id: "story::prod", sceneCount: 1, cutCount: 1, issueCount: 1 });
         expect(res.body.detail.scenes[0]).toMatchObject({ sceneKey: "001", title: "Opening" });
         expect(res.body.detail.scenes[0].cuts[0]).toMatchObject({ cutKey: "1", summary: "City reveal" });
         expect(res.body.detail.artifacts[0]).toMatchObject({ kind: "text_storyboard", gate: "G1" });
+        expect(res.body.detail.issues).toHaveLength(1);
+        expect(res.body.detail.issues[0]).toMatchObject({
+          id: "issue-1",
+          scanRunId: "scan-1",
+          severity: "error",
+          relativePath: "stories/story/02_Anime/storyboards/prod/broken.json",
+          issueCode: "json_parse_error",
+          message: "Invalid JSON"
+        });
       });
   });
   it("persists app-local note and checked status without changing source files", async () => {

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ProductionInsightPanel } from "../../src/client/components/ProductionInsightPanel";
+import type { ProductionDetailPayload } from "../../src/shared/types";
 
 describe("ProductionInsightPanel", () => {
   it("shows parsed scenes, cuts, and source assets for the selected production", () => {
@@ -53,6 +54,16 @@ describe("ProductionInsightPanel", () => {
             }
           ],
           manualNote: "G2確認待ち",
+          issues: [
+            {
+              id: "issue-1",
+              scanRunId: "scan-1",
+              severity: "error",
+              relativePath: "stories/story/02_Anime/storyboards/prod/broken.json",
+              issueCode: "json_parse_error",
+              message: "Invalid JSON"
+            }
+          ],
           artifacts: [
             {
               id: "artifact-1",
@@ -77,6 +88,9 @@ describe("ProductionInsightPanel", () => {
     expect(screen.getByText("001 Opening")).toBeInTheDocument();
     expect(screen.getByText("City reveal")).toBeInTheDocument();
     expect(screen.getByText("text_storyboard")).toBeInTheDocument();
+    expect(screen.getByText("Scan Issues")).toBeInTheDocument();
+    expect(screen.getByText("json_parse_error")).toBeInTheDocument();
+    expect(screen.getByText("Invalid JSON")).toBeInTheDocument();
   });
   it("saves app-local manual note and checked status", () => {
     const onSaveNote = vi.fn();
@@ -105,7 +119,8 @@ describe("ProductionInsightPanel", () => {
           },
           manualNote: "G2確認待ち",
           scenes: [],
-          artifacts: []
+          artifacts: [],
+          issues: []
         }}
         onSaveNote={onSaveNote}
         onToggleChecked={onToggleChecked}
@@ -145,7 +160,8 @@ describe("ProductionInsightPanel", () => {
           },
           manualNote: "",
           scenes: [],
-          artifacts: []
+          artifacts: [],
+          issues: []
         }}
         onAddTag={onAddTag}
       />
@@ -157,5 +173,33 @@ describe("ProductionInsightPanel", () => {
 
     expect(onAddTag).toHaveBeenCalledWith("優先確認");
   });
-});
+  it("renders older detail payloads without scan issues as empty", () => {
+    const legacyDetail = {
+      production: {
+        id: "story::legacy",
+        storyName: "story",
+        productionPath: "legacy",
+        absolutePath: "D:\\legacy",
+        detectionType: "manual",
+        gates: { G0: "missing", G1: "detected", G2: "missing", G3: "missing", G4: "missing" },
+        sceneCount: 0,
+        cutCount: 0,
+        storyboardSheetCount: 0,
+        videoPromptCount: 0,
+        generatedVideoCount: 0,
+        approvalCount: 0,
+        issueCount: 0,
+        lastContentMtime: null,
+        checked: false,
+        tags: []
+      },
+      manualNote: "",
+      scenes: [],
+      artifacts: []
+    } as unknown as ProductionDetailPayload;
+
+    render(<ProductionInsightPanel loading={false} detail={legacyDetail} />);
+
+    expect(screen.getByText("No scan issues are recorded for this production.")).toBeInTheDocument();
+  });});
 

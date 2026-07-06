@@ -852,3 +852,64 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+.scan-issues-block {
+  margin-top: 14px;
+}
+
+.scan-issue-list {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.scan-issue-list li {
+  background: white;
+  border: 1px solid #e3eaee;
+  border-radius: 8px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.scan-issue-list p {
+  margin: 8px 0;
+}
+
+.scan-issue-list code {
+  display: block;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.scan-issue-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.issue-severity {
+  border-radius: 999px;
+  color: white;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 5px 8px;
+  text-transform: uppercase;
+}
+
+.issue-error {
+  background: #9b2c1f;
+}
+
+.issue-warning,
+.issue-warn {
+  background: #8f5b16;
+}
+
+.issue-info {
+  background: #315c6f;
+}

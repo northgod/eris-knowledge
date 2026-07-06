@@ -1,4 +1,4 @@
-import { FileText, ListTree, Save, Tag } from "lucide-react";
+import { AlertTriangle, FileText, ListTree, Save, Tag } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ProductionDetailPayload } from "../../shared/types";
 
@@ -55,6 +55,7 @@ export function ProductionInsightPanel({
 
   const assetPreview = detail.artifacts.slice(0, 10);
   const scenePreview = detail.scenes.slice(0, 8);
+  const issuePreview = (detail.issues ?? []).slice(0, 20);
   const canAddTag = tagDraft.trim().length > 0;
 
   return (
@@ -161,6 +162,26 @@ export function ProductionInsightPanel({
             </ul>
           )}
         </div>
+      </div>
+
+      <div className="insight-block scan-issues-block">
+        <h3><AlertTriangle size={16} /> Scan Issues</h3>
+        {issuePreview.length === 0 ? (
+          <p className="quiet-text">No scan issues are recorded for this production.</p>
+        ) : (
+          <ul className="scan-issue-list">
+            {issuePreview.map((issue) => (
+              <li key={issue.id}>
+                <div className="scan-issue-meta">
+                  <span className={`issue-severity issue-${issue.severity}`}>{issue.severity}</span>
+                  <code>{issue.issueCode}</code>
+                </div>
+                <p>{issue.message}</p>
+                <code>{issue.relativePath}</code>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   );
