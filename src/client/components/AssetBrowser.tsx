@@ -1,4 +1,4 @@
-import { Eye, Search } from "lucide-react";
+import { Copy, Eye, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ArtifactRecord, AssetPreviewPayload } from "../../shared/types";
 
@@ -25,6 +25,35 @@ function isImageAsset(asset: ArtifactRecord): boolean {
 
 function assetFileUrl(assetId: string): string {
   return `/api/assets/${encodeURIComponent(assetId)}/file`;
+}
+
+function copyTextWithDocumentCommand(text: string): void {
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.setAttribute("readonly", "true");
+  textArea.style.left = "-9999px";
+  textArea.style.position = "fixed";
+  textArea.style.top = "0";
+  document.body.appendChild(textArea);
+  textArea.select();
+
+  try {
+    document.execCommand?.("copy");
+  } finally {
+    document.body.removeChild(textArea);
+  }
+}
+
+async function copyAssetPath(asset: ArtifactRecord): Promise<void> {
+  try {
+    if (!navigator.clipboard?.writeText) {
+      copyTextWithDocumentCommand(asset.absolutePath);
+      return;
+    }
+    await navigator.clipboard.writeText(asset.absolutePath);
+  } catch {
+    copyTextWithDocumentCommand(asset.absolutePath);
+  }
 }
 
 export function AssetBrowser({
@@ -124,7 +153,7 @@ export function AssetBrowser({
               <th>Gate</th>
               <th>Path</th>
               <th>Size</th>
-              <th>Preview</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -144,7 +173,16 @@ export function AssetBrowser({
                   <code>{asset.relativePath}</code>
                 </td>
                 <td>{asset.sizeBytes}</td>
-                <td>
+                <td className="asset-action-cell">
+                  <button
+                    className="secondary-button asset-copy-button"
+                    type="button"
+                    aria-label={`Copy path for ${asset.relativePath}`}
+                    onClick={() => void copyAssetPath(asset)}
+                  >
+                    <Copy size={14} />
+                    Copy path
+                  </button>
                   <button
                     className="secondary-button asset-preview-button"
                     type="button"

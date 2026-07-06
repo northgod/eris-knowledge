@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AssetBrowser } from "../../src/client/components/AssetBrowser";
 import type { ArtifactRecord } from "../../src/shared/types";
@@ -143,5 +143,47 @@ describe("AssetBrowser", () => {
     expect(screen.getByText("Read-only Preview")).toBeInTheDocument();
     expect(screen.getByText(/# Scene 001/)).toBeInTheDocument();
     expect(screen.getByText("stories/story/02_Anime/storyboards/EP2/01b/video_prompts/cut_001.md")).toBeInTheDocument();
+  });
+
+  it("copies an asset absolute path to the clipboard", () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText }
+    });
+
+    render(<AssetBrowser assets={assets} />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Copy path for stories/story/02_Anime/storyboards/EP2/01b/video_prompts/cut_001.md"
+      })
+    );
+
+    expect(writeText).toHaveBeenCalledWith("D:\\story\\cut_001.md");
+  });
+
+  it("falls back to a document copy command when clipboard permission is denied", async () => {
+    const writeText = vi.fn().mockRejectedValue(new DOMException("denied", "NotAllowedError"));
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText }
+    });
+    Object.defineProperty(document, "execCommand", {
+      configurable: true,
+      value: execCommand
+    });
+
+    render(<AssetBrowser assets={assets} />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Copy path for stories/story/02_Anime/storyboards/EP2/01b/video_prompts/cut_001.md"
+      })
+    );
+
+    await waitFor(() => expect(execCommand).toHaveBeenCalledWith("copy"));
+    expect(writeText).toHaveBeenCalledWith("D:\\story\\cut_001.md");
   });
 });

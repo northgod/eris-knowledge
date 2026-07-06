@@ -742,6 +742,13 @@ body {
     grid-template-columns: 1fr;
   }
 }
+.asset-action-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.asset-copy-button,
 .asset-preview-button {
   min-height: 32px;
   padding: 0 10px;
