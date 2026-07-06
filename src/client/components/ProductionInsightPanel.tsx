@@ -165,7 +165,6 @@ function appendReferenceItem(
 function sceneDisplaySections(scene: SceneWithCuts, assets: ArtifactRecord[]): SceneDisplaySections {
   const rows: DetailRow[] = [];
   const references: ReferenceGroup[] = [];
-  const seenLabels = new Set<string>();
   let currentReferenceGroup = "";
   let inReferences = false;
   let inCutPlan = false;
@@ -222,12 +221,12 @@ function sceneDisplaySections(scene: SceneWithCuts, assets: ArtifactRecord[]): S
 
     if (inCutPlan) continue;
     if (normalizedLabel === "時間" || normalizedLabel === "time") continue;
+    if (normalizedLabel === "ソース行" || normalizedLabel === "line") continue;
     if (normalizedLabel === "内容" || normalizedLabel === "summary") {
       contentFromDetails = attribute.value;
       continue;
     }
 
-    seenLabels.add(attribute.label);
     rows.push({ label: attribute.label, value: attribute.value });
   }
 
@@ -235,8 +234,7 @@ function sceneDisplaySections(scene: SceneWithCuts, assets: ArtifactRecord[]): S
   return {
     infoRows: [
       ...(content ? [{ label: "内容", value: content }] : []),
-      ...rows,
-      ...(seenLabels.has("ソース行") ? [] : [{ label: "ソース行", value: `Line ${scene.lineNumber}` }])
+      ...rows
     ],
     referenceGroups: references
   };
@@ -259,6 +257,7 @@ function cutAttributeRows(cut: CutRecord): DetailRow[] {
       continue;
     }
     if (isReferenceHeading(attribute.label) || isCutPlanHeading(attribute.label)) continue;
+    if (attribute.label === "ソース行" || attribute.label.toLowerCase() === "line") continue;
     if (attribute.label === "カメラ" || attribute.label.toLowerCase() === "camera") {
       if (!seenLabels.has("カメラ")) rows.push({ label: "カメラ", value: attribute.value });
       seenLabels.add("カメラ");
@@ -274,7 +273,6 @@ function cutAttributeRows(cut: CutRecord): DetailRow[] {
   if (cut.dialogue && !seenLabels.has("セリフ") && !seenLabels.has("台詞")) {
     rows.push({ label: "セリフ", value: cut.dialogue });
   }
-  rows.push({ label: "ソース行", value: `Line ${cut.lineNumber}` });
   return rows;
 }
 
@@ -510,7 +508,6 @@ export function ProductionInsightPanel({
                       {scene.timeRange && ` ${scene.timeRange}`}
                       {formatDuration(scene.durationSeconds) && ` / ${formatDuration(scene.durationSeconds)}`}
                     </h4>
-                    <span>Line {scene.lineNumber}</span>
                   </div>
                 </div>
                 <div className="scene-board-layout">

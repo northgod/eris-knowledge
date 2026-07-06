@@ -253,7 +253,7 @@ describe("ProductionInsightPanel", () => {
     const sceneBoards = screen.getByRole("region", { name: "Scene Boards" });
     const sceneBoard = within(sceneBoards).getByRole("article", { name: "001 Opening" });
     expect(within(sceneBoard).getByText("001 Opening 00:00-00:03 / 3秒")).toBeInTheDocument();
-    expect(within(sceneBoard).getAllByText("Line 3").length).toBeGreaterThan(0);
+    expect(within(sceneBoard).queryByText("Line 3")).not.toBeInTheDocument();
     const sceneInfo = within(sceneBoard).getByRole("table", { name: "Scene information" });
     expect(within(sceneInfo).getByRole("columnheader", { name: "項目" })).toBeInTheDocument();
     expect(within(sceneInfo).getByRole("columnheader", { name: "本文" })).toBeInTheDocument();
@@ -267,6 +267,7 @@ describe("ProductionInsightPanel", () => {
     expect(within(sceneInfo).getByRole("cell", { name: "Hero stands in rain" })).toBeInTheDocument();
     expect(within(sceneInfo).queryByText("参照ロール")).not.toBeInTheDocument();
     expect(within(sceneInfo).queryByText("CUT PLAN")).not.toBeInTheDocument();
+    expect(within(sceneInfo).queryByRole("cell", { name: "ソース行" })).not.toBeInTheDocument();
 
     const referenceRoles = within(sceneBoard).getByRole("region", { name: "参照ロール" });
     const characterReference = within(referenceRoles).getByRole("region", { name: "character_reference" });
@@ -300,6 +301,8 @@ describe("ProductionInsightPanel", () => {
     expect(within(cutTable).getByRole("cell", { name: "City reveal" })).toBeInTheDocument();
     expect(within(cutTable).getByRole("cell", { name: "セリフ" })).toBeInTheDocument();
     expect(within(cutTable).getByRole("cell", { name: "なし" })).toBeInTheDocument();
+    expect(within(cutTable).queryByRole("cell", { name: "ソース行" })).not.toBeInTheDocument();
+    expect(within(cutTable).queryByText("Line 4")).not.toBeInTheDocument();
 
     const sheetLink = within(sceneBoard).getByRole("link", {
       name: "stories/story/02_Anime/storyboards/prod/storyboard_sheets/scene_001_sheet.png"

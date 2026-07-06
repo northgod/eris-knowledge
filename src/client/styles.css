@@ -1,4 +1,8 @@
 :root {
+  --content-min-width: 1120px;
+  --content-max-width: 1920px;
+  --scene-text-min-width: 520px;
+  --scene-image-min-width: 680px;
   color: #172026;
   background: #f5f7f8;
   font-family: "Segoe UI", system-ui, sans-serif;
@@ -9,9 +13,11 @@ body {
 }
 
 .app-shell {
-  max-width: 1440px;
+  box-sizing: border-box;
+  max-width: none;
   margin: 0 auto;
   padding: 24px;
+  width: clamp(var(--content-min-width), 96vw, var(--content-max-width));
 }
 
 .topbar {
@@ -560,6 +566,7 @@ body {
   border: 1px solid #d9e1e5;
   border-radius: 8px;
   min-width: 0;
+  overflow-x: auto;
   padding: 14px;
 }
 
@@ -600,7 +607,7 @@ body {
 .scene-board-layout {
   display: grid;
   gap: 14px;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  grid-template-columns: minmax(var(--scene-text-min-width), 0.95fr) minmax(var(--scene-image-min-width), 1.05fr);
 }
 
 .scene-text-panel,
@@ -832,6 +839,12 @@ body {
 }
 
 @media (max-width: 900px) {
+  .app-shell {
+    max-width: none;
+    min-width: 0;
+    width: 100%;
+  }
+
   .insight-columns {
     grid-template-columns: 1fr;
   }
