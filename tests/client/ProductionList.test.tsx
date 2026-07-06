@@ -58,6 +58,29 @@ const filterProductions: ProductionSummary[] = [
     gates: { G0: "detected", G1: "detected", G2: "missing", G3: "missing", G4: "missing" }
   })
 ];
+const progressFilterProductions: ProductionSummary[] = [
+  makeProduction({
+    id: "story::complete-recent",
+    storyName: "story",
+    productionPath: "complete-recent",
+    lastContentMtime: "2026-07-05T00:00:00.000Z",
+    gates: { G0: "detected", G1: "detected", G2: "detected", G3: "detected", G4: "detected" }
+  }),
+  makeProduction({
+    id: "story::missing-recent",
+    storyName: "story",
+    productionPath: "missing-recent",
+    lastContentMtime: "2026-07-04T00:00:00.000Z",
+    gates: { G0: "detected", G1: "detected", G2: "missing", G3: "detected", G4: "detected" }
+  }),
+  makeProduction({
+    id: "story::missing-old",
+    storyName: "story",
+    productionPath: "missing-old",
+    lastContentMtime: "2026-06-01T00:00:00.000Z",
+    gates: { G0: "detected", G1: "detected", G2: "missing", G3: "detected", G4: "detected" }
+  })
+];
 
 describe("ProductionList", () => {
   it("selects a production from its detail button", () => {
@@ -83,5 +106,21 @@ describe("ProductionList", () => {
     expect(screen.getByText("story-a / EP1")).toBeInTheDocument();
     expect(screen.queryByText("story-a / EP2")).not.toBeInTheDocument();
     expect(screen.queryByText("story-b / EP1")).not.toBeInTheDocument();
+  });
+  it("filters productions by missing gates and recently updated state", () => {
+    render(<ProductionList productions={progressFilterProductions} />);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Show productions with missing gates only" }));
+
+    expect(screen.getByText("Showing 2 of 3 productions")).toBeInTheDocument();
+    expect(screen.queryByText("story / complete-recent")).not.toBeInTheDocument();
+    expect(screen.getByText("story / missing-recent")).toBeInTheDocument();
+    expect(screen.getByText("story / missing-old")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Show recently updated only" }));
+
+    expect(screen.getByText("Showing 1 of 3 productions")).toBeInTheDocument();
+    expect(screen.getByText("story / missing-recent")).toBeInTheDocument();
+    expect(screen.queryByText("story / missing-old")).not.toBeInTheDocument();
   });
 });
