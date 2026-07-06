@@ -51,7 +51,8 @@ function productionRootFor(relativePath: string): ProductionPathParts | null {
     file === "02_テキストコンテ.md" ||
     file.endsWith("_text_storyboard.md") ||
     file.endsWith("_cut_storyboard.md") ||
-    file.endsWith("_video_prompt.md");
+    file.endsWith("_video_prompt.md") ||
+    file.includes("_video_prompts");
   if (productionEnd === -1 && isRootArtifact) productionEnd = parts.length - 1;
 
   if (productionEnd <= productionStart) return null;
@@ -72,7 +73,8 @@ function detectType(files: string[]): DetectionType {
     (file) =>
       file.endsWith("02_テキストコンテ.md") ||
       file.includes("/storyboard_sheets/") ||
-      file.includes("/video_prompts/")
+      file.includes("/video_prompts/") ||
+      file.includes("_video_prompts")
   );
   if (hasOrchestration && hasManual) return "mixed";
   if (hasOrchestration) return "orchestrated";

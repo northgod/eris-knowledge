@@ -21,7 +21,7 @@ export function classifyArtifact(relativePath: string): ArtifactClassification {
   }
   if (normalized.includes("/storyboard_sheets/")) return { kind: "storyboard_sheet", gate: "G2" };
   if (file.startsWith("stage_sketch_")) return { kind: "stage_sketch", gate: "G2" };
-  if (normalized.includes("/video_prompts/") || file.endsWith("_video_prompt.md")) {
+  if (normalized.includes("/video_prompts/") || file.endsWith("_video_prompt.md") || file.includes("_video_prompts")) {
     return { kind: "video_prompt", gate: "G3" };
   }
   if (normalized.includes("/generated_videos/")) return { kind: "generated_video", gate: "G4" };

@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
+import { createRepositories } from "../../src/server/db/repositories";
 import { migrate } from "../../src/server/db/schema";
 import { indexRoot } from "../../src/server/indexer/indexer";
 
@@ -69,6 +70,60 @@ describe("indexRoot", () => {
         issue_code: "json_parse_error"
       });
       expect(issue.message).toContain("JSON");
+    } finally {
+      if (root.startsWith(os.tmpdir())) {
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    }
+  });
+
+  it("indexes embedded video prompt sections from text storyboard markdown", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "eris-embedded-prompt-"));
+    const productionDir = path.join(root, "stories", "story", "02_Anime", "storyboards", "prod");
+    fs.mkdirSync(productionDir, { recursive: true });
+    const storyboardPath = path.join(productionDir, "02_テキストコンテ.md");
+    fs.writeFileSync(
+      storyboardPath,
+      `# Scene 001 Opening
+
+CUT 1 [00:00-00:02] WIDE:
+
+## 動画生成プロンプト
+
+- prompt: Hold on sky.
+`,
+      "utf8"
+    );
+
+    const db = new Database(":memory:");
+    migrate(db);
+
+    try {
+      await indexRoot({ db, root, scanRootLabel: "temp" });
+
+      const artifacts = db.prepare(`
+        SELECT kind, gate, relative_path AS relativePath, absolute_path AS absolutePath
+        FROM artifacts
+        ORDER BY kind, relative_path
+      `).all() as Array<{ kind: string; gate: string; relativePath: string; absolutePath: string }>;
+      const production = createRepositories(db).productions.listForApi()[0];
+
+      expect(artifacts).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          kind: "text_storyboard",
+          gate: "G1",
+          relativePath: "stories/story/02_Anime/storyboards/prod/02_テキストコンテ.md",
+          absolutePath: storyboardPath
+        }),
+        expect.objectContaining({
+          kind: "video_prompt",
+          gate: "G3",
+          relativePath: "stories/story/02_Anime/storyboards/prod/02_テキストコンテ.md#video-prompt",
+          absolutePath: storyboardPath
+        })
+      ]));
+      expect(production.videoPromptCount).toBe(1);
+      expect(production.gates.G3).toBe("detected");
     } finally {
       if (root.startsWith(os.tmpdir())) {
         fs.rmSync(root, { recursive: true, force: true });

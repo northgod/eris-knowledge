@@ -18,7 +18,15 @@ export interface ParsedScene {
   cuts: ParsedCut[];
 }
 
+export interface ParsedEmbeddedArtifact {
+  kind: "video_prompt";
+  gate: "G3";
+  fragment: string;
+  lineNumber: number;
+}
+
 const sceneHeading = /^(#{1,3})\s*(?:シーン|Scene)\s+([0-9０-９]+(?:-[0-9０-９]+)?)(.*)$/i;
+const embeddedVideoPromptHeading = /^#{1,6}\s*(?:G3\s*)?(?:動画生成プロンプト|Video Prompt)(?:\s|$)/i;
 const cutPatterns = [
   /^\s*-?\s*CUT\s*([0-9０-９]+)\s*\[([0-9:.０-９]+-[0-9:.０-９]+)\]\s*([^:：]*)[:：]?/i,
   /^\s*#{2,4}\s*CUT\s*([0-9０-９]+)\s*[:：]?\s*([0-9:.０-９]+-[0-9:.０-９]+)?\s*\/?\s*([^:：]*)/i,
@@ -65,6 +73,24 @@ function extractSceneFromFileName(filePath: string): ParsedScene | null {
 
 function appendFieldValue(current: string | null, value: string): string {
   return current ? `${current}\n${value}` : value;
+}
+
+export function parseMarkdownEmbeddedArtifacts(markdown: string): ParsedEmbeddedArtifact[] {
+  const lines = markdown.split(/\r?\n/);
+  const embeddedArtifacts: ParsedEmbeddedArtifact[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!embeddedVideoPromptHeading.test(lines[index])) continue;
+    if (embeddedArtifacts.some((artifact) => artifact.kind === "video_prompt")) continue;
+    embeddedArtifacts.push({
+      kind: "video_prompt",
+      gate: "G3",
+      fragment: "#video-prompt",
+      lineNumber: index + 1
+    });
+  }
+
+  return embeddedArtifacts;
 }
 
 export function parseMarkdownScenes(markdown: string, sourcePath: string): ParsedScene[] {

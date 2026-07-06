@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseMarkdownScenes } from "../../src/server/parser/markdownParser";
+import { parseMarkdownEmbeddedArtifacts, parseMarkdownScenes } from "../../src/server/parser/markdownParser";
 
 describe("parseMarkdownScenes", () => {
   it("extracts Japanese scene headings and cut plans", () => {
@@ -48,5 +48,28 @@ Hold on sky.
 
     expect(scenes[0].sceneKey).toBe("00");
     expect(scenes[0].cuts[0].cameraLabel).toBe("STATIC / CLOUDY SKY");
+  });
+
+  it("detects embedded video prompt sections in combined markdown files", () => {
+    const markdown = `# 02 テキストコンテ
+
+## シーン 001
+
+CUT 1 [00:00-00:02] WIDE:
+
+## 動画生成プロンプト
+
+- model: seedance
+- prompt: Hold on sky.
+`;
+
+    expect(parseMarkdownEmbeddedArtifacts(markdown)).toEqual([
+      {
+        kind: "video_prompt",
+        gate: "G3",
+        fragment: "#video-prompt",
+        lineNumber: 7
+      }
+    ]);
   });
 });

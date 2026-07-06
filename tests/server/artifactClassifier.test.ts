@@ -16,6 +16,10 @@ describe("artifact classification", () => {
       kind: "video_prompt",
       gate: "G3"
     });
+    expect(classifyArtifact("EP1/03_1/06-08_video_prompts_001-018.md")).toMatchObject({
+      kind: "video_prompt",
+      gate: "G3"
+    });
   });
 
   it("infers gate statuses from artifacts", () => {

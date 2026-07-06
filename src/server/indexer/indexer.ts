@@ -5,7 +5,7 @@ import { createRepositories, stableId, type ArtifactUpsert, type ScanIssueUpsert
 import { classifyArtifact } from "../scanner/artifactClassifier";
 import { detectProductions } from "../scanner/productionDetector";
 import { parseApprovalMarkdown } from "../parser/approvalParser";
-import { parseMarkdownScenes } from "../parser/markdownParser";
+import { parseMarkdownEmbeddedArtifacts, parseMarkdownScenes } from "../parser/markdownParser";
 import { parseCodexTask } from "../parser/orchestratorParser";
 
 export interface IndexRootInput {
@@ -62,6 +62,7 @@ export async function indexRoot(input: IndexRootInput): Promise<void> {
     const artifacts = await Promise.all(
       production.files.map((file) => artifactFromPath(input.root, production.id, file))
     );
+    const sourceArtifacts = [...artifacts];
     const lastMtime = artifacts.map((artifact) => artifact.mtime).sort().at(-1) ?? null;
 
     repos.productions.upsert({
@@ -72,16 +73,26 @@ export async function indexRoot(input: IndexRootInput): Promise<void> {
       detectionType: production.detectionType,
       lastContentMtime: lastMtime
     });
-    repos.artifacts.replaceForProduction(production.id, artifacts);
 
     const parsedScenes = [];
     const parsedTasks = [];
     const parsedApprovals = [];
 
-    for (const artifact of artifacts) {
+    for (const artifact of sourceArtifacts) {
       if (artifact.extension === ".md") {
         try {
           const markdown = await fs.readFile(artifact.absolutePath, "utf8");
+          if (artifact.kind !== "video_prompt") {
+            for (const embedded of parseMarkdownEmbeddedArtifacts(markdown)) {
+              artifacts.push({
+                ...artifact,
+                id: stableId(`artifact:${production.id}:${artifact.relativePath}:${embedded.kind}:${embedded.lineNumber}`),
+                kind: embedded.kind,
+                gate: embedded.gate,
+                relativePath: `${artifact.relativePath}${embedded.fragment}`
+              });
+            }
+          }
           const scenes = parseMarkdownScenes(markdown, artifact.relativePath);
           for (const scene of scenes) {
             parsedScenes.push({
@@ -152,6 +163,7 @@ export async function indexRoot(input: IndexRootInput): Promise<void> {
       }
     }
 
+    repos.artifacts.replaceForProduction(production.id, artifacts);
     repos.scenes.replaceForProduction(production.id, parsedScenes);
     repos.orchestrator.replaceTasks(production.id, parsedTasks);
     repos.orchestrator.replaceApprovals(production.id, parsedApprovals);
