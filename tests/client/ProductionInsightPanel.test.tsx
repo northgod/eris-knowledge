@@ -281,13 +281,7 @@ describe("ProductionInsightPanel", () => {
       "href",
       "/api/assets/reference-background/file"
     );
-    const stageSketch = within(referenceRoles).getByRole("region", { name: "stage_sketch" });
-    expect(within(stageSketch).getByRole("cell", { name: "stage_sketch" })).toBeInTheDocument();
-    expect(within(stageSketch).getByRole("link", { name: "storyboards/stage_scene_001.png" })).toHaveAttribute(
-      "href",
-      "/api/assets/stage-sketch/file"
-    );
-    expect(within(stageSketch).queryByText("WEEK_MONTAGE / POP_CUTS")).not.toBeInTheDocument();
+    expect(within(referenceRoles).queryByRole("region", { name: "stage_sketch" })).not.toBeInTheDocument();
 
     const cutPlan = within(sceneBoard).getByRole("region", { name: "カットプラン" });
     expect(cutPlan.compareDocumentPosition(within(sceneBoard).getByText("Text Sources")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -304,7 +298,16 @@ describe("ProductionInsightPanel", () => {
     expect(within(cutTable).queryByRole("cell", { name: "ソース行" })).not.toBeInTheDocument();
     expect(within(cutTable).queryByText("Line 4")).not.toBeInTheDocument();
 
-    const sheetLink = within(sceneBoard).getByRole("link", {
+    const storyboardPanel = within(sceneBoard).getByRole("region", { name: "絵コンテ" });
+    const stageSketchLink = within(storyboardPanel).getByRole("link", { name: "storyboards/stage_scene_001.png" });
+    expect(stageSketchLink).toHaveAttribute("href", "/api/assets/stage-sketch/file");
+    expect(stageSketchLink.compareDocumentPosition(within(storyboardPanel).getByRole("link", {
+      name: "stories/story/02_Anime/storyboards/prod/storyboard_sheets/scene_001_sheet.png"
+    })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(stageSketchLink).getByRole("img", { name: "storyboards/stage_scene_001.png" })).toHaveClass("storyboard-original-image");
+    expect(within(stageSketchLink).getByRole("img", { name: "storyboards/stage_scene_001.png" })).toHaveClass("stage-sketch-original-image");
+
+    const sheetLink = within(storyboardPanel).getByRole("link", {
       name: "stories/story/02_Anime/storyboards/prod/storyboard_sheets/scene_001_sheet.png"
     });
     expect(sheetLink).toHaveAttribute("href", "/api/assets/storyboard-1/file");

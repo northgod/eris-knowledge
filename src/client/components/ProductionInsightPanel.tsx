@@ -91,6 +91,7 @@ interface ReferenceGroup {
 interface SceneDisplaySections {
   infoRows: DetailRow[];
   referenceGroups: ReferenceGroup[];
+  stageSketches: ReferenceItem[];
 }
 
 function splitDetailLines(details: string | null): string[] {
@@ -114,7 +115,11 @@ function isReferenceHeading(label: string): boolean {
 }
 
 function isReferenceGroupHeading(label: string): boolean {
-  return /(?:_reference|stage_sketch)$/i.test(label);
+  return /_reference$/i.test(label);
+}
+
+function isStageSketchHeading(label: string): boolean {
+  return label.toLowerCase() === "stage_sketch";
 }
 
 function isCutPlanHeading(label: string): boolean {
@@ -162,9 +167,17 @@ function appendReferenceItem(
   });
 }
 
+function referenceItem(item: { title: string; value: string }, assets: ArtifactRecord[]): ReferenceItem {
+  return {
+    ...item,
+    asset: findReferenceAsset(item.value, assets)
+  };
+}
+
 function sceneDisplaySections(scene: SceneWithCuts, assets: ArtifactRecord[]): SceneDisplaySections {
   const rows: DetailRow[] = [];
   const references: ReferenceGroup[] = [];
+  const stageSketches: ReferenceItem[] = [];
   let currentReferenceGroup = "";
   let inReferences = false;
   let inCutPlan = false;
@@ -193,6 +206,20 @@ function sceneDisplaySections(scene: SceneWithCuts, assets: ArtifactRecord[]): S
     }
 
     if (inReferences) {
+      if (isStageSketchHeading(attribute.label)) {
+        currentReferenceGroup = "stage_sketch";
+        if (attribute.value) {
+          stageSketches.push(referenceItem({ title: attribute.label, value: attribute.value }, assets));
+        }
+        continue;
+      }
+      if (currentReferenceGroup === "stage_sketch" && looksLikeReferenceValue(attribute.value)) {
+        stageSketches.push(referenceItem({
+          title: attribute.label,
+          value: attribute.value
+        }, assets));
+        continue;
+      }
       if (isReferenceGroupHeading(attribute.label)) {
         currentReferenceGroup = attribute.label;
         if (attribute.value) {
@@ -236,7 +263,8 @@ function sceneDisplaySections(scene: SceneWithCuts, assets: ArtifactRecord[]): S
       ...(content ? [{ label: "内容", value: content }] : []),
       ...rows
     ],
-    referenceGroups: references
+    referenceGroups: references,
+    stageSketches
   };
 }
 
@@ -346,6 +374,25 @@ function CutDetail({ cut }: { cut: CutRecord }) {
       </div>
       <DetailTable ariaLabel={`CUT ${cut.cutKey} attributes`} rows={cutAttributeRows(cut)} />
     </li>
+  );
+}
+
+function OriginalImageLink({
+  asset,
+  label,
+  imageClassName = ""
+}: {
+  asset: ArtifactRecord;
+  label: string;
+  imageClassName?: string;
+}) {
+  return (
+    <a className="storyboard-original-link" href={assetFileUrl(asset.id)} target="_blank" rel="noreferrer" aria-label={label}>
+      <figure className="storyboard-original-figure">
+        <img className={`storyboard-original-image${imageClassName ? ` ${imageClassName}` : ""}`} src={assetFileUrl(asset.id)} alt={label} loading="lazy" />
+        <figcaption>{label}</figcaption>
+      </figure>
+    </a>
   );
 }
 
@@ -553,19 +600,30 @@ export function ProductionInsightPanel({
                   </div>
                   <section className="scene-image-panel" aria-label="絵コンテ">
                     <strong>絵コンテ</strong>
-                    {imageAssets.length === 0 ? (
-                      <p className="quiet-text">No storyboard images are matched to this scene.</p>
-                    ) : (
-                      <div className="storyboard-original-list">
-                        {imageAssets.map((asset) => (
-                          <a className="storyboard-original-link" href={assetFileUrl(asset.id)} key={asset.id} target="_blank" rel="noreferrer" aria-label={asset.relativePath}>
-                            <figure className="storyboard-original-figure">
-                              <img className="storyboard-original-image" src={assetFileUrl(asset.id)} alt={asset.relativePath} loading="lazy" />
-                              <figcaption>{asset.relativePath}</figcaption>
-                            </figure>
-                          </a>
+                    {sections.stageSketches.length > 0 && (
+                      <div className="storyboard-original-list stage-sketch-original-list" aria-label="stage_sketch">
+                        {sections.stageSketches.map((item, index) => (
+                          item.asset ? (
+                            <OriginalImageLink
+                              asset={item.asset}
+                              imageClassName="stage-sketch-original-image"
+                              key={`${item.value}-${index}`}
+                              label={item.value}
+                            />
+                          ) : (
+                            <code key={`${item.value}-${index}`}>{item.value}</code>
+                          )
                         ))}
                       </div>
+                    )}
+                    {imageAssets.length > 0 ? (
+                      <div className="storyboard-original-list">
+                        {imageAssets.map((asset) => (
+                          <OriginalImageLink asset={asset} key={asset.id} label={asset.relativePath} />
+                        ))}
+                      </div>
+                    ) : (
+                      sections.stageSketches.length === 0 && <p className="quiet-text">No storyboard images are matched to this scene.</p>
                     )}
                   </section>
                 </div>
@@ -581,12 +639,7 @@ export function ProductionInsightPanel({
                 </div>
                 <div className="storyboard-original-list">
                   {unassignedStoryboardImages.map((asset) => (
-                    <a className="storyboard-original-link" href={assetFileUrl(asset.id)} key={asset.id} target="_blank" rel="noreferrer" aria-label={asset.relativePath}>
-                      <figure className="storyboard-original-figure">
-                        <img className="storyboard-original-image" src={assetFileUrl(asset.id)} alt={asset.relativePath} loading="lazy" />
-                        <figcaption>{asset.relativePath}</figcaption>
-                      </figure>
-                    </a>
+                    <OriginalImageLink asset={asset} key={asset.id} label={asset.relativePath} />
                   ))}
                 </div>
               </article>
