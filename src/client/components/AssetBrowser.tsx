@@ -72,8 +72,18 @@ export function AssetBrowser({
   const productions = useMemo(() => uniqueSorted(assets.map((asset) => asset.productionId)), [assets]);
   const kinds = useMemo(() => uniqueSorted(assets.map((asset) => asset.kind)), [assets]);
   const gates = useMemo(() => uniqueSorted(assets.map((asset) => asset.gate)), [assets]);
+  const hasAssetQuery =
+    storyFilter !== "all" ||
+    productionFilter !== "all" ||
+    kindFilter !== "all" ||
+    gateFilter !== "all" ||
+    searchText.trim().length > 0;
 
   const filteredAssets = useMemo(() => {
+    if (!hasAssetQuery) {
+      return [];
+    }
+
     const normalizedSearch = searchText.trim().toLowerCase();
     return assets.filter((asset) => {
       const matchesStory = storyFilter === "all" || storyNameForProduction(asset.productionId) === storyFilter;
@@ -87,7 +97,7 @@ export function AssetBrowser({
         asset.productionId.toLowerCase().includes(normalizedSearch);
       return matchesStory && matchesProduction && matchesKind && matchesGate && matchesSearch;
     });
-  }, [assets, gateFilter, kindFilter, productionFilter, searchText, storyFilter]);
+  }, [assets, gateFilter, hasAssetQuery, kindFilter, productionFilter, searchText, storyFilter]);
 
   return (
     <section className="asset-section">
@@ -157,7 +167,15 @@ export function AssetBrowser({
             </tr>
           </thead>
           <tbody>
-            {filteredAssets.map((asset) => (
+            {filteredAssets.length === 0 ? (
+              <tr>
+                <td colSpan={5}>
+                  <span className="quiet-text">
+                    {hasAssetQuery ? "No assets match the current filters." : "Search or filter to show matching assets."}
+                  </span>
+                </td>
+              </tr>
+            ) : filteredAssets.map((asset) => (
               <tr key={asset.id}>
                 <td>{asset.kind}</td>
                 <td>{asset.gate ?? "-"}</td>

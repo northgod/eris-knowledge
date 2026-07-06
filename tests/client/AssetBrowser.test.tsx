@@ -70,6 +70,14 @@ const storyFilterAssets: ArtifactRecord[] = [
 ];
 
 describe("AssetBrowser", () => {
+  it("keeps the asset table empty until the user searches or filters", () => {
+    render(<AssetBrowser assets={assets} />);
+
+    expect(screen.getByText("Showing 0 of 3 assets")).toBeInTheDocument();
+    expect(screen.getByText("Search or filter to show matching assets.")).toBeInTheDocument();
+    expect(screen.queryByText("stories/story/02_Anime/storyboards/EP2/01b/video_prompts/cut_001.md")).not.toBeInTheDocument();
+  });
+
   it("filters assets by story before production filtering", () => {
     render(<AssetBrowser assets={storyFilterAssets} />);
 
@@ -105,6 +113,8 @@ describe("AssetBrowser", () => {
   it("renders image thumbnails from the read-only asset file endpoint", () => {
     render(<AssetBrowser assets={assets} />);
 
+    fireEvent.change(screen.getByLabelText("Kind"), { target: { value: "storyboard_sheet" } });
+
     const thumbnail = screen.getByRole("img", {
       name: "stories/story/02_Anime/storyboards/EP2/01b/storyboard_sheets/sheet_001.png"
     });
@@ -133,6 +143,7 @@ describe("AssetBrowser", () => {
       />
     );
 
+    fireEvent.change(screen.getByPlaceholderText("Search assets"), { target: { value: "cut_001" } });
     fireEvent.click(
       screen.getByRole("button", {
         name: "Preview stories/story/02_Anime/storyboards/EP2/01b/video_prompts/cut_001.md"
@@ -154,6 +165,7 @@ describe("AssetBrowser", () => {
 
     render(<AssetBrowser assets={assets} />);
 
+    fireEvent.change(screen.getByPlaceholderText("Search assets"), { target: { value: "cut_001" } });
     fireEvent.click(
       screen.getByRole("button", {
         name: "Copy path for stories/story/02_Anime/storyboards/EP2/01b/video_prompts/cut_001.md"
@@ -177,6 +189,7 @@ describe("AssetBrowser", () => {
 
     render(<AssetBrowser assets={assets} />);
 
+    fireEvent.change(screen.getByPlaceholderText("Search assets"), { target: { value: "cut_001" } });
     fireEvent.click(
       screen.getByRole("button", {
         name: "Copy path for stories/story/02_Anime/storyboards/EP2/01b/video_prompts/cut_001.md"
