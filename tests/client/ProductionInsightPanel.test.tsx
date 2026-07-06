@@ -212,6 +212,94 @@ describe("ProductionInsightPanel", () => {
     const generatedVideos = screen.getByRole("region", { name: "Generated Videos" });
     expect(within(generatedVideos).getByText("stories/story/02_Anime/storyboards/prod/generated_videos/cut_001.mp4")).toBeInTheDocument();
   });
+  it("previews text storyboards and video prompts from the detail panel", () => {
+    const onPreviewAsset = vi.fn();
+    render(
+      <ProductionInsightPanel
+        loading={false}
+        detail={{
+          production: {
+            id: "story::prod",
+            storyName: "story",
+            productionPath: "prod",
+            absolutePath: "D:\\prod",
+            detectionType: "manual",
+            gates: { G0: "missing", G1: "detected", G2: "missing", G3: "detected", G4: "missing" },
+            sceneCount: 0,
+            cutCount: 0,
+            storyboardSheetCount: 0,
+            videoPromptCount: 1,
+            generatedVideoCount: 0,
+            approvalCount: 0,
+            issueCount: 0,
+            lastContentMtime: null,
+            checked: false,
+            tags: []
+          },
+          manualNote: "",
+          scenes: [],
+          issues: [],
+          artifacts: [
+            {
+              id: "text-1",
+              productionId: "story::prod",
+              kind: "text_storyboard",
+              gate: "G1",
+              relativePath: "stories/story/02_Anime/storyboards/prod/02_テキストコンテ.md",
+              absolutePath: "D:\\prod\\02_テキストコンテ.md",
+              extension: ".md",
+              sizeBytes: 160,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            },
+            {
+              id: "prompt-1",
+              productionId: "story::prod",
+              kind: "video_prompt",
+              gate: "G3",
+              relativePath: "stories/story/02_Anime/storyboards/prod/video_prompts/cut_001.md",
+              absolutePath: "D:\\prod\\cut_001.md",
+              extension: ".md",
+              sizeBytes: 120,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            }
+          ]
+        }}
+        selectedPreview={{
+          id: "prompt-1",
+          relativePath: "stories/story/02_Anime/storyboards/prod/video_prompts/cut_001.md",
+          absolutePath: "D:\\prod\\cut_001.md",
+          kind: "video_prompt",
+          mode: "text",
+          text: "CUT 1: Opening image prompt",
+          truncated: false,
+          sizeBytes: 120,
+          mtime: "2026-07-06T00:00:00.000Z"
+        }}
+        previewLoading={false}
+        onPreviewAsset={onPreviewAsset}
+      />
+    );
+
+    const textStoryboardList = screen.getByRole("region", { name: "Text Storyboard List" });
+    expect(within(textStoryboardList).getByText("stories/story/02_Anime/storyboards/prod/02_テキストコンテ.md")).toBeInTheDocument();
+    fireEvent.click(within(textStoryboardList).getByRole("button", {
+      name: "Preview stories/story/02_Anime/storyboards/prod/02_テキストコンテ.md"
+    }));
+
+    const videoPromptList = screen.getByRole("region", { name: "Video Prompt List" });
+    fireEvent.click(within(videoPromptList).getByRole("button", {
+      name: "Preview stories/story/02_Anime/storyboards/prod/video_prompts/cut_001.md"
+    }));
+
+    const detailPreview = screen.getByRole("region", { name: "Selected Production Preview" });
+    expect(within(detailPreview).getByText("video_prompt")).toBeInTheDocument();
+    expect(within(detailPreview).getByText("full preview")).toBeInTheDocument();
+    expect(within(detailPreview).getByText("CUT 1: Opening image prompt")).toBeInTheDocument();
+    expect(onPreviewAsset).toHaveBeenCalledWith("text-1");
+    expect(onPreviewAsset).toHaveBeenCalledWith("prompt-1");
+  });
   it("shows orchestrator task, approval, and state records as a dedicated group", () => {
     render(
       <ProductionInsightPanel

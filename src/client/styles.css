@@ -453,10 +453,22 @@ body {
   font-size: 12px;
 }
 
+.asset-mini-list .asset-action-item {
+  align-items: start;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.asset-mini-list .asset-action-item .secondary-button {
+  min-height: 32px;
+  padding: 0 10px;
+}
+
 .production-asset-groups {
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   margin-top: 14px;
 }
 
@@ -917,6 +929,7 @@ body {
 }
 
 .orchestrator-block,
+.detail-preview-panel,
 .scan-issues-block {
   margin-top: 14px;
 }

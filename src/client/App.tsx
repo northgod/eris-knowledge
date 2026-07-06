@@ -177,6 +177,11 @@ export function App() {
     };
   }, [selectedProductionId]);
 
+  const selectedProductionPreview =
+    selectedAssetPreview && selectedDetail?.artifacts.some((asset) => asset.id === selectedAssetPreview.id)
+      ? selectedAssetPreview
+      : null;
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -202,9 +207,12 @@ export function App() {
         <ProductionInsightPanel
           detail={selectedDetail}
           loading={detailLoading}
+          selectedPreview={selectedProductionPreview}
+          previewLoading={assetPreviewLoading}
           onSaveNote={handleSaveNote}
           onToggleChecked={handleToggleChecked}
           onAddTag={handleAddTag}
+          onPreviewAsset={handlePreviewAsset}
         />
       )}
       {!loading && (

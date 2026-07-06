@@ -1,6 +1,6 @@
-import { AlertTriangle, FileText, Image, ListChecks, ListTree, Save, Tag, Video } from "lucide-react";
+import { AlertTriangle, Eye, FileText, Image, ListChecks, ListTree, Save, Tag, Video } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { GateId, ProductionDetailPayload } from "../../shared/types";
+import type { AssetPreviewPayload, GateId, ProductionDetailPayload } from "../../shared/types";
 
 interface ProductionInsightPanelProps {
   detail: ProductionDetailPayload | null;
@@ -8,6 +8,9 @@ interface ProductionInsightPanelProps {
   onSaveNote?: (note: string) => void | Promise<void>;
   onToggleChecked?: (checked: boolean) => void | Promise<void>;
   onAddTag?: (name: string) => void | Promise<void>;
+  selectedPreview?: AssetPreviewPayload | null;
+  previewLoading?: boolean;
+  onPreviewAsset?: (assetId: string) => void | Promise<void>;
 }
 
 const gateIds: GateId[] = ["G0", "G1", "G2", "G3", "G4"];
@@ -21,7 +24,10 @@ export function ProductionInsightPanel({
   loading,
   onSaveNote,
   onToggleChecked,
-  onAddTag
+  onAddTag,
+  selectedPreview = null,
+  previewLoading = false,
+  onPreviewAsset
 }: ProductionInsightPanelProps) {
   const [noteDraft, setNoteDraft] = useState("");
   const [tagDraft, setTagDraft] = useState("");
@@ -62,6 +68,7 @@ export function ProductionInsightPanel({
   const assetPreview = detail.artifacts.slice(0, 10);
   const scenePreview = detail.scenes.slice(0, 8);
   const issuePreview = (detail.issues ?? []).slice(0, 20);
+  const textStoryboards = detail.artifacts.filter((asset) => asset.kind === "text_storyboard").slice(0, 20);
   const storyboardImages = detail.artifacts.filter((asset) => asset.kind === "storyboard_sheet").slice(0, 12);
   const videoPrompts = detail.artifacts.filter((asset) => asset.kind === "video_prompt").slice(0, 20);
   const generatedVideos = detail.artifacts.filter((asset) => asset.kind === "generated_video" || asset.kind === "video").slice(0, 20);
@@ -189,6 +196,33 @@ export function ProductionInsightPanel({
       </div>
 
       <div className="production-asset-groups">
+        <section className="insight-block production-asset-section" aria-label="Text Storyboard List">
+          <h3><FileText size={16} /> Text Storyboard List</h3>
+          {textStoryboards.length === 0 ? (
+            <p className="quiet-text">No text storyboards are indexed for this production.</p>
+          ) : (
+            <ul className="asset-mini-list">
+              {textStoryboards.map((asset) => (
+                <li className="asset-action-item" key={asset.id}>
+                  <div>
+                    <span>{asset.gate ?? "storyboard"}</span>
+                    <code>{asset.relativePath}</code>
+                  </div>
+                  <button
+                    className="secondary-button asset-preview-button"
+                    type="button"
+                    aria-label={`Preview ${asset.relativePath}`}
+                    onClick={() => void onPreviewAsset?.(asset.id)}
+                  >
+                    <Eye size={14} />
+                    Preview
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
         <section className="insight-block production-asset-section" aria-label="Storyboard Gallery">
           <h3><Image size={16} /> Storyboard Gallery</h3>
           {storyboardImages.length === 0 ? (
@@ -212,9 +246,20 @@ export function ProductionInsightPanel({
           ) : (
             <ul className="asset-mini-list">
               {videoPrompts.map((asset) => (
-                <li key={asset.id}>
-                  <span>{asset.gate ?? "prompt"}</span>
-                  <code>{asset.relativePath}</code>
+                <li className="asset-action-item" key={asset.id}>
+                  <div>
+                    <span>{asset.gate ?? "prompt"}</span>
+                    <code>{asset.relativePath}</code>
+                  </div>
+                  <button
+                    className="secondary-button asset-preview-button"
+                    type="button"
+                    aria-label={`Preview ${asset.relativePath}`}
+                    onClick={() => void onPreviewAsset?.(asset.id)}
+                  >
+                    <Eye size={14} />
+                    Preview
+                  </button>
                 </li>
               ))}
             </ul>
@@ -237,6 +282,29 @@ export function ProductionInsightPanel({
           )}
         </section>
       </div>
+
+      <section className="asset-preview-panel detail-preview-panel" aria-label="Selected Production Preview" aria-live="polite">
+        <h3>Selected Production Preview</h3>
+        {previewLoading ? (
+          <p className="quiet-text">Loading preview.</p>
+        ) : selectedPreview ? (
+          <div className="asset-preview-content">
+            <div className="asset-preview-meta">
+              <span>{selectedPreview.kind}</span>
+              <span>{selectedPreview.sizeBytes} bytes</span>
+              <span>{selectedPreview.truncated ? "truncated" : "full preview"}</span>
+            </div>
+            <code>{selectedPreview.relativePath}</code>
+            {selectedPreview.mode === "text" ? (
+              <pre>{selectedPreview.text}</pre>
+            ) : (
+              <p className="quiet-text">Inline preview is not available for this asset type. Use the path for external review.</p>
+            )}
+          </div>
+        ) : (
+          <p className="quiet-text">Select a text storyboard or video prompt to preview it without editing source files.</p>
+        )}
+      </section>
 
       <section className="insight-block orchestrator-block" aria-label="Orchestrator Records">
         <h3><FileText size={16} /> Orchestrator Records</h3>
