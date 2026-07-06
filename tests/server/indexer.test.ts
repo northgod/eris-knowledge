@@ -130,4 +130,61 @@ CUT 1 [00:00-00:02] WIDE:
       }
     }
   });
+
+  it("adds referenced images from scene markdown to the production artifacts", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "eris-reference-assets-"));
+    const animeDir = path.join(root, "stories", "story", "02_Anime");
+    const productionDir = path.join(animeDir, "storyboards", "prod");
+    fs.mkdirSync(path.join(animeDir, "references"), { recursive: true });
+    fs.mkdirSync(path.join(animeDir, "background"), { recursive: true });
+    fs.mkdirSync(productionDir, { recursive: true });
+    fs.writeFileSync(path.join(animeDir, "references", "hero.png"), "fake image");
+    fs.writeFileSync(path.join(animeDir, "background", "roof.png"), "fake image");
+    fs.writeFileSync(path.join(productionDir, "stage_sketch_scene.png"), "fake image");
+    fs.writeFileSync(
+      path.join(productionDir, "02_テキストコンテ.md"),
+      `## シーン 001
+- 内容: Hero arrives.
+- 参照ロール:
+  - character_reference:
+    - Hero: references/hero.png
+  - background_reference:
+    - Roof: background/roof.png
+  - stage_sketch: stage_sketch_scene.png
+- CUT PLAN:
+  - CUT1 [00:00-00:01] WIDE:
+    - 画面: City reveal
+`,
+      "utf8"
+    );
+
+    const db = new Database(":memory:");
+    migrate(db);
+
+    try {
+      await indexRoot({ db, root, scanRootLabel: "temp" });
+
+      const artifacts = createRepositories(db).api.productionDetail("story::prod")?.artifacts ?? [];
+
+      expect(artifacts).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          kind: "image",
+          relativePath: "stories/story/02_Anime/references/hero.png"
+        }),
+        expect.objectContaining({
+          kind: "image",
+          relativePath: "stories/story/02_Anime/background/roof.png"
+        }),
+        expect.objectContaining({
+          kind: "stage_sketch",
+          gate: "G2",
+          relativePath: "stories/story/02_Anime/storyboards/prod/stage_sketch_scene.png"
+        })
+      ]));
+    } finally {
+      if (root.startsWith(os.tmpdir())) {
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    }
+  });
 });

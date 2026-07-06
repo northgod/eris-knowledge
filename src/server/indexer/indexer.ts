@@ -3,7 +3,7 @@ import path from "node:path";
 import type Database from "better-sqlite3";
 import { createRepositories, stableId, type ArtifactUpsert, type ScanIssueUpsert } from "../db/repositories";
 import { classifyArtifact } from "../scanner/artifactClassifier";
-import { detectProductions } from "../scanner/productionDetector";
+import { detectProductions, type DetectedProduction } from "../scanner/productionDetector";
 import { parseApprovalMarkdown } from "../parser/approvalParser";
 import { parseMarkdownEmbeddedArtifacts, parseMarkdownScenes } from "../parser/markdownParser";
 import { parseCodexTask } from "../parser/orchestratorParser";
@@ -30,6 +30,97 @@ async function artifactFromPath(root: string, productionId: string, relativePath
     mtime: stat.mtime.toISOString(),
     contentHash: null
   };
+}
+
+const imageReferenceExtensions = new Set([".png", ".jpg", ".jpeg", ".webp"]);
+
+function normalizeSeparators(value: string): string {
+  return value.split(path.sep).join("/");
+}
+
+function rootRelativePath(root: string, absolutePath: string): string {
+  return normalizeSeparators(path.relative(root, absolutePath));
+}
+
+function isInsideRoot(root: string, target: string): boolean {
+  const resolvedRoot = path.resolve(root).toLowerCase();
+  const resolvedTarget = path.resolve(target).toLowerCase();
+  return resolvedTarget === resolvedRoot || resolvedTarget.startsWith(`${resolvedRoot}${path.sep}`);
+}
+
+async function artifactFromAbsolutePath(root: string, productionId: string, absolutePath: string): Promise<ArtifactUpsert> {
+  return artifactFromPath(root, productionId, rootRelativePath(root, absolutePath));
+}
+
+function normalizeReferenceImageValue(value: string): string | null {
+  const cleaned = value.trim().replace(/^["'`]+|["'`]+$/g, "");
+  const match = cleaned.match(/(.+\.(?:png|jpe?g|webp))/i);
+  if (!match) return null;
+  return normalizeSeparators(match[1].replace(/[),.;]+$/g, "").trim());
+}
+
+function imageReferencesFromDetails(details: string | null): string[] {
+  if (!details) return [];
+  const references: string[] = [];
+  for (const rawLine of details.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    const attribute = line.match(/^([^:：]+)[:：]\s*(.+)$/);
+    if (!attribute) continue;
+    const reference = normalizeReferenceImageValue(attribute[2]);
+    if (reference) references.push(reference);
+  }
+  return references;
+}
+
+function referenceCandidatePaths(root: string, production: DetectedProduction, referenceValue: string): string[] {
+  const normalized = normalizeSeparators(referenceValue).replace(/^\.\//, "");
+  if (path.isAbsolute(normalized)) return isInsideRoot(root, normalized) ? [path.resolve(normalized)] : [];
+
+  const storyRoot = path.join(root, "stories", production.storyName);
+  const animeRoot = path.join(storyRoot, "02_Anime");
+  return [
+    path.join(root, ...normalized.split("/")),
+    path.join(animeRoot, ...normalized.split("/")),
+    path.join(production.absolutePath, ...normalized.split("/")),
+    path.join(storyRoot, ...normalized.split("/"))
+  ];
+}
+
+async function resolveReferenceImage(root: string, production: DetectedProduction, referenceValue: string): Promise<string | null> {
+  if (!imageReferenceExtensions.has(path.extname(referenceValue).toLowerCase())) return null;
+  for (const candidate of referenceCandidatePaths(root, production, referenceValue)) {
+    if (!isInsideRoot(root, candidate)) continue;
+    try {
+      const stat = await fs.stat(candidate);
+      if (stat.isFile()) return path.resolve(candidate);
+    } catch {
+      // Missing references remain visible as text in the UI.
+    }
+  }
+  return null;
+}
+
+async function referencedImageArtifacts(
+  root: string,
+  production: DetectedProduction,
+  scenes: Array<{ details: string | null; cuts: Array<{ details: string | null }> }>
+): Promise<ArtifactUpsert[]> {
+  const values = new Set<string>();
+  for (const scene of scenes) {
+    for (const reference of imageReferencesFromDetails(scene.details)) values.add(reference);
+    for (const cut of scene.cuts) {
+      for (const reference of imageReferencesFromDetails(cut.details)) values.add(reference);
+    }
+  }
+
+  const artifacts = new Map<string, ArtifactUpsert>();
+  for (const value of values) {
+    const absolutePath = await resolveReferenceImage(root, production, value);
+    if (!absolutePath) continue;
+    const artifact = await artifactFromAbsolutePath(root, production.id, absolutePath);
+    artifacts.set(artifact.relativePath, artifact);
+  }
+  return Array.from(artifacts.values());
 }
 
 function errorMessage(error: unknown): string {
@@ -161,6 +252,15 @@ export async function indexRoot(input: IndexRootInput): Promise<void> {
             error
           }));
         }
+      }
+    }
+
+    const extraReferenceArtifacts = await referencedImageArtifacts(input.root, production, parsedScenes);
+    const existingArtifactPaths = new Set(artifacts.map((artifact) => artifact.relativePath));
+    for (const artifact of extraReferenceArtifacts) {
+      if (!existingArtifactPaths.has(artifact.relativePath)) {
+        artifacts.push(artifact);
+        existingArtifactPaths.add(artifact.relativePath);
       }
     }
 

@@ -59,7 +59,7 @@ function uniqueAssets(assets: Array<ArtifactRecord | undefined>): ArtifactRecord
 }
 
 function isStoryboardImage(asset: ArtifactRecord): boolean {
-  return ["storyboard_sheet", "storyboard_reference", "stage_sketch", "image"].includes(asset.kind)
+  return asset.kind === "storyboard_sheet"
     && [".png", ".jpg", ".jpeg", ".webp"].includes(asset.extension.toLowerCase());
 }
 
@@ -69,33 +69,284 @@ function isTextBoardAsset(asset: ArtifactRecord): boolean {
 
 function formatDuration(seconds: number | null): string | null {
   if (seconds === null) return null;
-  return `${Number.isInteger(seconds) ? seconds : seconds.toFixed(1)}s`;
+  return `${Number.isInteger(seconds) ? seconds : seconds.toFixed(1)}秒`;
 }
 
-function DetailItem({ label, children }: { label: string; children: ReactNode }) {
+interface DetailRow {
+  label: string;
+  value: ReactNode;
+}
+
+interface ReferenceItem {
+  title: string;
+  value: string;
+  asset: ArtifactRecord | null;
+}
+
+interface ReferenceGroup {
+  name: string;
+  items: ReferenceItem[];
+}
+
+interface SceneDisplaySections {
+  infoRows: DetailRow[];
+  referenceGroups: ReferenceGroup[];
+}
+
+function splitDetailLines(details: string | null): string[] {
+  return (details ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function parseAttributeLine(line: string): { label: string; value: string } | null {
+  const match = line.match(/^([^:：]+)[:：]\s*(.*)$/);
+  if (!match) return null;
+  return {
+    label: match[1].trim(),
+    value: match[2].trim()
+  };
+}
+
+function isReferenceHeading(label: string): boolean {
+  return label === "参照ロール" || label.toLowerCase() === "references";
+}
+
+function isReferenceGroupHeading(label: string): boolean {
+  return /(?:_reference|stage_sketch)$/i.test(label);
+}
+
+function isCutPlanHeading(label: string): boolean {
+  return label.toLowerCase() === "cut plan" || label === "カットプラン";
+}
+
+function normalizeReferenceValue(value: string): string {
+  return normalizeAssetKey(value).replace(/^["'`]+|["'`]+$/g, "");
+}
+
+function looksLikeReferenceValue(value: string): boolean {
+  const normalized = normalizeReferenceValue(value);
+  return /\.(?:png|jpe?g|webp)$/i.test(normalized);
+}
+
+function assetMatchesReference(asset: ArtifactRecord, referenceValue: string): boolean {
+  const normalizedReference = normalizeReferenceValue(referenceValue);
+  if (!normalizedReference) return false;
+  const normalizedPath = normalizeAssetKey(asset.relativePath);
+  return normalizedPath.endsWith(normalizedReference) || normalizedPath.includes(`/${normalizedReference}`);
+}
+
+function findReferenceAsset(value: string, assets: ArtifactRecord[]): ArtifactRecord | null {
+  return assets.find((asset) =>
+    [".png", ".jpg", ".jpeg", ".webp"].includes(asset.extension.toLowerCase())
+    && assetMatchesReference(asset, value)
+  ) ?? null;
+}
+
+function appendReferenceItem(
+  groups: ReferenceGroup[],
+  groupName: string,
+  item: { title: string; value: string },
+  assets: ArtifactRecord[]
+) {
+  const name = groupName || "reference";
+  let group = groups.find((candidate) => candidate.name === name);
+  if (!group) {
+    group = { name, items: [] };
+    groups.push(group);
+  }
+  group.items.push({
+    ...item,
+    asset: findReferenceAsset(item.value, assets)
+  });
+}
+
+function sceneDisplaySections(scene: SceneWithCuts, assets: ArtifactRecord[]): SceneDisplaySections {
+  const rows: DetailRow[] = [];
+  const references: ReferenceGroup[] = [];
+  const seenLabels = new Set<string>();
+  let currentReferenceGroup = "";
+  let inReferences = false;
+  let inCutPlan = false;
+  let contentFromDetails: string | null = null;
+
+  for (const line of splitDetailLines(scene.details)) {
+    const attribute = parseAttributeLine(line);
+    if (!attribute) {
+      if (!inReferences && !inCutPlan) rows.push({ label: "詳細", value: line });
+      continue;
+    }
+
+    const normalizedLabel = attribute.label.toLowerCase();
+    if (isReferenceHeading(attribute.label)) {
+      inReferences = true;
+      inCutPlan = false;
+      currentReferenceGroup = "";
+      if (attribute.value) appendReferenceItem(references, "reference", { title: attribute.label, value: attribute.value }, assets);
+      continue;
+    }
+    if (isCutPlanHeading(attribute.label)) {
+      inCutPlan = true;
+      inReferences = false;
+      currentReferenceGroup = "";
+      continue;
+    }
+
+    if (inReferences) {
+      if (isReferenceGroupHeading(attribute.label)) {
+        currentReferenceGroup = attribute.label;
+        if (attribute.value) {
+          appendReferenceItem(references, currentReferenceGroup, { title: attribute.label, value: attribute.value }, assets);
+        }
+        continue;
+      }
+      if (currentReferenceGroup && looksLikeReferenceValue(attribute.value)) {
+        appendReferenceItem(references, currentReferenceGroup, {
+          title: attribute.label,
+          value: attribute.value
+        }, assets);
+        continue;
+      }
+      if (!currentReferenceGroup && looksLikeReferenceValue(attribute.value)) {
+        appendReferenceItem(references, "reference", {
+          title: attribute.label,
+          value: attribute.value
+        }, assets);
+        continue;
+      } else {
+        inReferences = false;
+        currentReferenceGroup = "";
+      }
+    }
+
+    if (inCutPlan) continue;
+    if (normalizedLabel === "時間" || normalizedLabel === "time") continue;
+    if (normalizedLabel === "内容" || normalizedLabel === "summary") {
+      contentFromDetails = attribute.value;
+      continue;
+    }
+
+    seenLabels.add(attribute.label);
+    rows.push({ label: attribute.label, value: attribute.value });
+  }
+
+  const content = scene.summary ?? contentFromDetails;
+  return {
+    infoRows: [
+      ...(content ? [{ label: "内容", value: content }] : []),
+      ...rows,
+      ...(seenLabels.has("ソース行") ? [] : [{ label: "ソース行", value: `Line ${scene.lineNumber}` }])
+    ],
+    referenceGroups: references
+  };
+}
+
+function cutAttributeRows(cut: CutRecord): DetailRow[] {
+  const rows: DetailRow[] = [];
+  const seenLabels = new Set<string>();
+
+  if (cut.cameraLabel) {
+    rows.push({ label: "カメラ", value: cut.cameraLabel });
+    seenLabels.add("カメラ");
+  }
+
+  for (const line of splitDetailLines(cut.details)) {
+    if (/^CUT\s*[0-9０-９]+/i.test(line)) continue;
+    const attribute = parseAttributeLine(line);
+    if (!attribute) {
+      rows.push({ label: "詳細", value: line });
+      continue;
+    }
+    if (isReferenceHeading(attribute.label) || isCutPlanHeading(attribute.label)) continue;
+    if (attribute.label === "カメラ" || attribute.label.toLowerCase() === "camera") {
+      if (!seenLabels.has("カメラ")) rows.push({ label: "カメラ", value: attribute.value });
+      seenLabels.add("カメラ");
+      continue;
+    }
+    rows.push({ label: attribute.label, value: attribute.value });
+    seenLabels.add(attribute.label);
+  }
+
+  if (cut.summary && !seenLabels.has("画面") && !seenLabels.has("内容")) {
+    rows.push({ label: "画面", value: cut.summary });
+  }
+  if (cut.dialogue && !seenLabels.has("セリフ") && !seenLabels.has("台詞")) {
+    rows.push({ label: "セリフ", value: cut.dialogue });
+  }
+  rows.push({ label: "ソース行", value: `Line ${cut.lineNumber}` });
+  return rows;
+}
+
+function DetailTable({ ariaLabel, rows }: { ariaLabel: string; rows: DetailRow[] }) {
+  if (rows.length === 0) return <p className="quiet-text">No structured details are available.</p>;
   return (
-    <div className="detail-item">
-      <dt>{label}</dt>
-      <dd>{children}</dd>
-    </div>
+    <table className="detail-table" aria-label={ariaLabel}>
+      <thead>
+        <tr>
+          <th>項目</th>
+          <th>本文</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, index) => (
+          <tr key={`${row.label}-${index}`}>
+            <td>{row.label}</td>
+            <td>{row.value}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function ReferenceRoles({ groups }: { groups: ReferenceGroup[] }) {
+  if (groups.length === 0) return null;
+  return (
+    <section className="reference-roles-block" aria-label="参照ロール">
+      <h5>参照ロール</h5>
+      {groups.map((group) => (
+        <section className="reference-group" aria-label={group.name} key={group.name}>
+          <h6>{group.name}</h6>
+          <table className="reference-table">
+            <thead>
+              <tr>
+                <th>タイトル</th>
+                <th>小さいサムネイル</th>
+              </tr>
+            </thead>
+            <tbody>
+              {group.items.map((item, index) => (
+                <tr key={`${group.name}-${item.title}-${index}`}>
+                  <td>{item.title}</td>
+                  <td>
+                    {item.asset ? (
+                      <a href={assetFileUrl(item.asset.id)} target="_blank" rel="noreferrer" aria-label={item.value}>
+                        <img className="reference-thumbnail" src={assetFileUrl(item.asset.id)} alt={item.value} loading="lazy" />
+                      </a>
+                    ) : (
+                      <code>{item.value}</code>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ))}
+    </section>
   );
 }
 
 function CutDetail({ cut }: { cut: CutRecord }) {
-  const title = `CUT ${cut.cutKey}${cut.timeRange ? ` ${cut.timeRange}` : ""}`;
+  const title = `CUT ${cut.cutKey}${cut.timeRange ? ` [${cut.timeRange}]` : ""}`;
   return (
     <li className="cut-detail-item">
       <div className="cut-detail-header">
         <strong>{title}</strong>
         {formatDuration(cut.durationSeconds) && <span>{formatDuration(cut.durationSeconds)}</span>}
       </div>
-      <dl className="detail-grid compact-detail-grid">
-        {cut.cameraLabel && <DetailItem label="Camera">{cut.cameraLabel}</DetailItem>}
-        <DetailItem label="Line">{cut.lineNumber}</DetailItem>
-        {cut.summary && <DetailItem label="Summary">{cut.summary}</DetailItem>}
-        {cut.dialogue && <DetailItem label="Dialogue">{cut.dialogue}</DetailItem>}
-      </dl>
-      {cut.details && <pre className="raw-detail-text">{cut.details}</pre>}
+      <DetailTable ariaLabel={`CUT ${cut.cutKey} attributes`} rows={cutAttributeRows(cut)} />
     </li>
   );
 }
@@ -165,7 +416,7 @@ export function ProductionInsightPanel({
     ]);
     const imageAssets = storyboardImages.filter((asset) => assetMatchesScene(asset, scene));
     for (const asset of imageAssets) sceneBoardImages.add(asset.id);
-    return { scene, textAssets, imageAssets };
+    return { scene, textAssets, imageAssets, sections: sceneDisplaySections(scene, detail.artifacts) };
   });
   const unassignedStoryboardImages = storyboardImages.filter((asset) => !sceneBoardImages.has(asset.id));
   const canAddTag = tagDraft.trim().length > 0;
@@ -250,30 +501,32 @@ export function ProductionInsightPanel({
           <p className="quiet-text">No parsed scene boards are available for this production.</p>
         ) : (
           <div className="scene-board-list">
-            {sceneBoards.map(({ scene, textAssets, imageAssets }) => (
+            {sceneBoards.map(({ scene, textAssets, imageAssets, sections }) => (
               <article className="scene-board-card" aria-label={`${scene.sceneKey} ${scene.title}`} key={scene.id}>
                 <div className="scene-board-heading">
                   <div>
-                    <h4>{scene.sceneKey} {scene.title}</h4>
+                    <h4>
+                      {scene.sceneKey} {scene.title}
+                      {scene.timeRange && ` ${scene.timeRange}`}
+                      {formatDuration(scene.durationSeconds) && ` / ${formatDuration(scene.durationSeconds)}`}
+                    </h4>
                     <span>Line {scene.lineNumber}</span>
-                  </div>
-                  <div className="scene-board-time">
-                    {scene.timeRange && <strong>{scene.timeRange}</strong>}
-                    {formatDuration(scene.durationSeconds) && <span>{formatDuration(scene.durationSeconds)}</span>}
                   </div>
                 </div>
                 <div className="scene-board-layout">
                   <div className="scene-text-panel">
-                    <dl className="detail-grid">
-                      <DetailItem label="Scene">{scene.sceneKey}</DetailItem>
-                      <DetailItem label="Title">{scene.title}</DetailItem>
-                      {scene.timeRange && <DetailItem label="Time">{scene.timeRange}</DetailItem>}
-                      {formatDuration(scene.durationSeconds) && (
-                        <DetailItem label="Duration">{formatDuration(scene.durationSeconds)}</DetailItem>
+                    <DetailTable ariaLabel="Scene information" rows={sections.infoRows} />
+                    <ReferenceRoles groups={sections.referenceGroups} />
+                    <section className="scene-cut-list" aria-label="カットプラン">
+                      <strong>カットプラン</strong>
+                      {scene.cuts.length === 0 ? (
+                        <p className="quiet-text">No parsed cuts are available for this scene.</p>
+                      ) : (
+                        <ol>
+                          {scene.cuts.map((cut) => <CutDetail cut={cut} key={cut.id} />)}
+                        </ol>
                       )}
-                      {scene.summary && <DetailItem label="Summary">{scene.summary}</DetailItem>}
-                    </dl>
-                    {scene.details && <pre className="raw-detail-text">{scene.details}</pre>}
+                    </section>
                     <div className="scene-source-assets">
                       <strong>Text Sources</strong>
                       {textAssets.length === 0 ? (
@@ -300,34 +553,24 @@ export function ProductionInsightPanel({
                         </ul>
                       )}
                     </div>
-                    <div className="scene-cut-list">
-                      <strong>Cuts</strong>
-                      {scene.cuts.length === 0 ? (
-                        <p className="quiet-text">No parsed cuts are available for this scene.</p>
-                      ) : (
-                        <ol>
-                          {scene.cuts.map((cut) => <CutDetail cut={cut} key={cut.id} />)}
-                        </ol>
-                      )}
-                    </div>
                   </div>
-                  <div className="scene-image-panel">
-                    <strong>Storyboard Images</strong>
+                  <section className="scene-image-panel" aria-label="絵コンテ">
+                    <strong>絵コンテ</strong>
                     {imageAssets.length === 0 ? (
                       <p className="quiet-text">No storyboard images are matched to this scene.</p>
                     ) : (
-                      <div className="storyboard-gallery scene-storyboard-gallery">
+                      <div className="storyboard-original-list">
                         {imageAssets.map((asset) => (
-                          <a href={assetFileUrl(asset.id)} key={asset.id} target="_blank" rel="noreferrer" aria-label={asset.relativePath}>
-                            <figure>
-                              <img src={assetFileUrl(asset.id)} alt={asset.relativePath} loading="lazy" />
+                          <a className="storyboard-original-link" href={assetFileUrl(asset.id)} key={asset.id} target="_blank" rel="noreferrer" aria-label={asset.relativePath}>
+                            <figure className="storyboard-original-figure">
+                              <img className="storyboard-original-image" src={assetFileUrl(asset.id)} alt={asset.relativePath} loading="lazy" />
                               <figcaption>{asset.relativePath}</figcaption>
                             </figure>
                           </a>
                         ))}
                       </div>
                     )}
-                  </div>
+                  </section>
                 </div>
               </article>
             ))}
@@ -339,11 +582,11 @@ export function ProductionInsightPanel({
                     <span>{unassignedStoryboardImages.length} assets</span>
                   </div>
                 </div>
-                <div className="storyboard-gallery scene-storyboard-gallery">
+                <div className="storyboard-original-list">
                   {unassignedStoryboardImages.map((asset) => (
-                    <a href={assetFileUrl(asset.id)} key={asset.id} target="_blank" rel="noreferrer" aria-label={asset.relativePath}>
-                      <figure>
-                        <img src={assetFileUrl(asset.id)} alt={asset.relativePath} loading="lazy" />
+                    <a className="storyboard-original-link" href={assetFileUrl(asset.id)} key={asset.id} target="_blank" rel="noreferrer" aria-label={asset.relativePath}>
+                      <figure className="storyboard-original-figure">
+                        <img className="storyboard-original-image" src={assetFileUrl(asset.id)} alt={asset.relativePath} loading="lazy" />
                         <figcaption>{asset.relativePath}</figcaption>
                       </figure>
                     </a>

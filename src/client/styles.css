@@ -600,7 +600,7 @@ body {
 .scene-board-layout {
   display: grid;
   gap: 14px;
-  grid-template-columns: minmax(0, 1.08fr) minmax(280px, 0.92fr);
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
 }
 
 .scene-text-panel,
@@ -610,6 +610,11 @@ body {
   display: grid;
   gap: 10px;
   min-width: 0;
+}
+
+.scene-image-panel {
+  align-content: start;
+  overflow-x: auto;
 }
 
 .scene-text-panel > strong,
@@ -665,6 +670,71 @@ body {
   word-break: break-word;
 }
 
+.detail-table,
+.reference-table {
+  background: white;
+  border: 1px solid #d9e1e5;
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.detail-table th,
+.detail-table td,
+.reference-table th,
+.reference-table td {
+  border-bottom: 1px solid #e8eef1;
+  font-size: 13px;
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.detail-table th:first-child,
+.detail-table td:first-child {
+  color: #42505a;
+  font-weight: 700;
+  width: 160px;
+}
+
+.detail-table td,
+.reference-table td {
+  overflow-wrap: anywhere;
+}
+
+.reference-roles-block,
+.reference-group {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.reference-roles-block h5,
+.reference-group h6 {
+  color: #1d3844;
+  font-size: 13px;
+  margin: 0;
+}
+
+.reference-group h6 {
+  color: #63717a;
+}
+
+.reference-table th:first-child,
+.reference-table td:first-child {
+  width: 180px;
+}
+
+.reference-thumbnail {
+  background: #edf2f4;
+  border: 1px solid #d9e1e5;
+  border-radius: 4px;
+  display: block;
+  height: 64px;
+  object-fit: cover;
+  width: 96px;
+}
+
 .scene-cut-list ol {
   display: grid;
   gap: 8px;
@@ -710,6 +780,45 @@ body {
 
 .scene-storyboard-gallery img {
   min-height: 92px;
+}
+
+.storyboard-original-list {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.storyboard-original-link {
+  color: inherit;
+  display: block;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.storyboard-original-figure {
+  background: white;
+  border: 1px solid #d9e1e5;
+  border-radius: 8px;
+  margin: 0;
+  overflow: auto;
+  padding: 10px;
+}
+
+.storyboard-original-image {
+  background: #edf2f4;
+  display: block;
+  height: auto;
+  max-width: none;
+  object-fit: contain;
+  width: auto;
+}
+
+.storyboard-original-figure figcaption {
+  color: #42505a;
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
 }
 
 .source-assets-block {

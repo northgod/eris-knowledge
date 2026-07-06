@@ -88,14 +88,14 @@ describe("ProductionInsightPanel", () => {
 
     expect(screen.getByText("Selected Production")).toBeInTheDocument();
     const sceneBoards = screen.getByRole("region", { name: "Scene Boards" });
-    expect(within(sceneBoards).getByText("001 Opening")).toBeInTheDocument();
+    expect(within(sceneBoards).getByRole("article", { name: "001 Opening" })).toBeInTheDocument();
     expect(screen.getByText("City reveal")).toBeInTheDocument();
     expect(screen.getAllByText("text_storyboard").length).toBeGreaterThan(0);
     expect(screen.getByText("Scan Issues")).toBeInTheDocument();
     expect(screen.getByText("json_parse_error")).toBeInTheDocument();
     expect(screen.getByText("Invalid JSON")).toBeInTheDocument();
   });
-  it("pairs scene text boards and storyboard images by scene", () => {
+  it("renders scene details as tables with separated references, cuts, and full-size storyboards", () => {
     render(
       <ProductionInsightPanel
         loading={false}
@@ -128,7 +128,19 @@ describe("ProductionInsightPanel", () => {
               timeRange: "00:00-00:03",
               durationSeconds: 3,
               summary: "Hero arrives",
-              details: "参照ロール: reference_role_scene_001.png",
+              details: [
+                "内容: Hero arrives",
+                "場所、状態: Rooftop / rain",
+                "参照ロール:",
+                "character_reference:",
+                "アルヴィナ: references/alvina_scene_001.png",
+                "background_reference:",
+                "屋上: background/roof_scene_001.png",
+                "stage_sketch: storyboards/stage_scene_001.png",
+                "カメラ: WEEK_MONTAGE / POP_CUTS",
+                "画面: Hero stands in rain",
+                "CUT PLAN:"
+              ].join("\n"),
               lineNumber: 3,
               cuts: [
                 {
@@ -139,8 +151,8 @@ describe("ProductionInsightPanel", () => {
                   durationSeconds: 1,
                   cameraLabel: "wide",
                   summary: "City reveal",
-                  dialogue: null,
-                  details: "画面: City reveal\n参照ロール: reference_role_scene_001.png",
+                  dialogue: "なし",
+                  details: "CUT1 [00:00-00:01] wide:\n目的: Establish the city\n画面: City reveal\nセリフ: なし",
                   lineNumber: 4
                 }
               ]
@@ -174,12 +186,36 @@ describe("ProductionInsightPanel", () => {
               contentHash: null
             },
             {
-              id: "reference-1",
+              id: "reference-character",
               productionId: "story::prod",
               kind: "image",
               gate: null,
-              relativePath: "stories/story/02_Anime/storyboards/prod/reference_role_scene_001.png",
-              absolutePath: "D:\\prod\\reference_role_scene_001.png",
+              relativePath: "stories/story/02_Anime/references/alvina_scene_001.png",
+              absolutePath: "D:\\prod\\alvina_scene_001.png",
+              extension: ".png",
+              sizeBytes: 180,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            },
+            {
+              id: "reference-background",
+              productionId: "story::prod",
+              kind: "image",
+              gate: null,
+              relativePath: "stories/story/02_Anime/references/background/roof_scene_001.png",
+              absolutePath: "D:\\prod\\roof_scene_001.png",
+              extension: ".png",
+              sizeBytes: 180,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            },
+            {
+              id: "stage-sketch",
+              productionId: "story::prod",
+              kind: "image",
+              gate: null,
+              relativePath: "stories/story/02_Anime/storyboards/prod/storyboards/stage_scene_001.png",
+              absolutePath: "D:\\prod\\stage_scene_001.png",
               extension: ".png",
               sizeBytes: 180,
               mtime: "2026-07-06T00:00:00.000Z",
@@ -216,12 +252,54 @@ describe("ProductionInsightPanel", () => {
 
     const sceneBoards = screen.getByRole("region", { name: "Scene Boards" });
     const sceneBoard = within(sceneBoards).getByRole("article", { name: "001 Opening" });
-    expect(within(sceneBoard).getAllByText("00:00-00:03").length).toBeGreaterThan(0);
-    expect(within(sceneBoard).getAllByText("3s").length).toBeGreaterThan(0);
-    expect(within(sceneBoard).getByText("Line 3")).toBeInTheDocument();
-    expect(within(sceneBoard).getByText("CUT 1 00:00-00:01")).toBeInTheDocument();
-    expect(within(sceneBoard).getByText("wide")).toBeInTheDocument();
-    expect(within(sceneBoard).getByText("City reveal")).toBeInTheDocument();
+    expect(within(sceneBoard).getByText("001 Opening 00:00-00:03 / 3秒")).toBeInTheDocument();
+    expect(within(sceneBoard).getAllByText("Line 3").length).toBeGreaterThan(0);
+    const sceneInfo = within(sceneBoard).getByRole("table", { name: "Scene information" });
+    expect(within(sceneInfo).getByRole("columnheader", { name: "項目" })).toBeInTheDocument();
+    expect(within(sceneInfo).getByRole("columnheader", { name: "本文" })).toBeInTheDocument();
+    expect(within(sceneInfo).getByRole("cell", { name: "内容" })).toBeInTheDocument();
+    expect(within(sceneInfo).getByRole("cell", { name: "Hero arrives" })).toBeInTheDocument();
+    expect(within(sceneInfo).getByRole("cell", { name: "場所、状態" })).toBeInTheDocument();
+    expect(within(sceneInfo).getByRole("cell", { name: "Rooftop / rain" })).toBeInTheDocument();
+    expect(within(sceneInfo).getByRole("cell", { name: "カメラ" })).toBeInTheDocument();
+    expect(within(sceneInfo).getByRole("cell", { name: "WEEK_MONTAGE / POP_CUTS" })).toBeInTheDocument();
+    expect(within(sceneInfo).getByRole("cell", { name: "画面" })).toBeInTheDocument();
+    expect(within(sceneInfo).getByRole("cell", { name: "Hero stands in rain" })).toBeInTheDocument();
+    expect(within(sceneInfo).queryByText("参照ロール")).not.toBeInTheDocument();
+    expect(within(sceneInfo).queryByText("CUT PLAN")).not.toBeInTheDocument();
+
+    const referenceRoles = within(sceneBoard).getByRole("region", { name: "参照ロール" });
+    const characterReference = within(referenceRoles).getByRole("region", { name: "character_reference" });
+    expect(within(characterReference).getByRole("cell", { name: "アルヴィナ" })).toBeInTheDocument();
+    const characterLink = within(characterReference).getByRole("link", { name: "references/alvina_scene_001.png" });
+    expect(characterLink).toHaveAttribute("href", "/api/assets/reference-character/file");
+    expect(within(characterLink).getByRole("img", { name: "references/alvina_scene_001.png" })).toHaveClass("reference-thumbnail");
+    const backgroundReference = within(referenceRoles).getByRole("region", { name: "background_reference" });
+    expect(within(backgroundReference).getByRole("cell", { name: "屋上" })).toBeInTheDocument();
+    expect(within(backgroundReference).getByRole("link", { name: "background/roof_scene_001.png" })).toHaveAttribute(
+      "href",
+      "/api/assets/reference-background/file"
+    );
+    const stageSketch = within(referenceRoles).getByRole("region", { name: "stage_sketch" });
+    expect(within(stageSketch).getByRole("cell", { name: "stage_sketch" })).toBeInTheDocument();
+    expect(within(stageSketch).getByRole("link", { name: "storyboards/stage_scene_001.png" })).toHaveAttribute(
+      "href",
+      "/api/assets/stage-sketch/file"
+    );
+    expect(within(stageSketch).queryByText("WEEK_MONTAGE / POP_CUTS")).not.toBeInTheDocument();
+
+    const cutPlan = within(sceneBoard).getByRole("region", { name: "カットプラン" });
+    expect(cutPlan.compareDocumentPosition(within(sceneBoard).getByText("Text Sources")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(cutPlan).getByText("CUT 1 [00:00-00:01]")).toBeInTheDocument();
+    const cutTable = within(cutPlan).getByRole("table", { name: "CUT 1 attributes" });
+    expect(within(cutTable).getByRole("cell", { name: "カメラ" })).toBeInTheDocument();
+    expect(within(cutTable).getByRole("cell", { name: "wide" })).toBeInTheDocument();
+    expect(within(cutTable).getByRole("cell", { name: "目的" })).toBeInTheDocument();
+    expect(within(cutTable).getByRole("cell", { name: "Establish the city" })).toBeInTheDocument();
+    expect(within(cutTable).getByRole("cell", { name: "画面" })).toBeInTheDocument();
+    expect(within(cutTable).getByRole("cell", { name: "City reveal" })).toBeInTheDocument();
+    expect(within(cutTable).getByRole("cell", { name: "セリフ" })).toBeInTheDocument();
+    expect(within(cutTable).getByRole("cell", { name: "なし" })).toBeInTheDocument();
 
     const sheetLink = within(sceneBoard).getByRole("link", {
       name: "stories/story/02_Anime/storyboards/prod/storyboard_sheets/scene_001_sheet.png"
@@ -231,11 +309,9 @@ describe("ProductionInsightPanel", () => {
     expect(within(sheetLink).getByRole("img", {
       name: "stories/story/02_Anime/storyboards/prod/storyboard_sheets/scene_001_sheet.png"
     })).toHaveAttribute("src", "/api/assets/storyboard-1/file");
-
-    const referenceLink = within(sceneBoard).getByRole("link", {
-      name: "stories/story/02_Anime/storyboards/prod/reference_role_scene_001.png"
-    });
-    expect(referenceLink).toHaveAttribute("href", "/api/assets/reference-1/file");
+    expect(within(sheetLink).getByRole("img", {
+      name: "stories/story/02_Anime/storyboards/prod/storyboard_sheets/scene_001_sheet.png"
+    })).toHaveClass("storyboard-original-image");
     expect(within(sceneBoard).queryByRole("link", {
       name: "stories/story/02_Anime/storyboards/EP2/01b/storyboard_sheets/EP2_01b_cut_sheet_02.png"
     })).not.toBeInTheDocument();
