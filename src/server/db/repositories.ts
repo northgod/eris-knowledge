@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import type Database from "better-sqlite3";
-import type { DetectionType, GateId, GateStatus } from "../../shared/types";
+import type { ArtifactRecord, CutRecord, DetectionType, GateId, GateStatus, ProductionDetailPayload, SceneRecord } from "../../shared/types";
 
 export interface ProductionUpsert {
   id: string;
@@ -299,7 +299,7 @@ export function createRepositories(db: Database.Database) {
       }
     },
     api: {
-      artifacts() {
+      artifacts(): ArtifactRecord[] {
         return db.prepare(`
           SELECT
             id,
@@ -314,8 +314,72 @@ export function createRepositories(db: Database.Database) {
             content_hash AS contentHash
           FROM artifacts
           ORDER BY kind, relative_path
-        `).all();
+        `).all() as ArtifactRecord[];
+      },
+      productionDetail(productionId: string): ProductionDetailPayload | null {
+        const production = createRepositories(db).productions.listForApi().find((item) => item.id === productionId);
+        if (!production) return null;
+
+        const artifacts = db.prepare(`
+          SELECT
+            id,
+            production_id AS productionId,
+            kind,
+            gate,
+            relative_path AS relativePath,
+            absolute_path AS absolutePath,
+            extension,
+            size_bytes AS sizeBytes,
+            mtime,
+            content_hash AS contentHash
+          FROM artifacts
+          WHERE production_id = ?
+          ORDER BY gate, kind, relative_path
+        `).all(productionId) as ArtifactRecord[];
+        const sceneRows = db.prepare(`
+          SELECT
+            id,
+            production_id AS productionId,
+            source_artifact_id AS sourceArtifactId,
+            scene_key AS sceneKey,
+            title,
+            time_range AS timeRange,
+            duration_seconds AS durationSeconds,
+            summary,
+            line_number AS lineNumber
+          FROM scenes
+          WHERE production_id = ?
+          ORDER BY line_number, scene_key
+        `).all(productionId) as SceneRecord[];
+        const cutRows = db.prepare(`
+          SELECT
+            id,
+            scene_id AS sceneId,
+            cut_key AS cutKey,
+            time_range AS timeRange,
+            duration_seconds AS durationSeconds,
+            camera_label AS cameraLabel,
+            summary,
+            dialogue,
+            line_number AS lineNumber
+          FROM cuts
+          WHERE scene_id IN (SELECT id FROM scenes WHERE production_id = ?)
+          ORDER BY line_number, cut_key
+        `).all(productionId) as CutRecord[];
+        const cutsByScene = new Map<string, CutRecord[]>();
+        for (const cut of cutRows) {
+          const cuts = cutsByScene.get(cut.sceneId) ?? [];
+          cuts.push(cut);
+          cutsByScene.set(cut.sceneId, cuts);
+        }
+
+        return {
+          production,
+          scenes: sceneRows.map((scene) => ({ ...scene, cuts: cutsByScene.get(scene.id) ?? [] })),
+          artifacts
+        };
       }
     }
   };
 }
+

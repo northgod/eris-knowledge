@@ -87,3 +87,13 @@ export interface CutRecord {
   dialogue: string | null;
   lineNumber: number;
 }
+
+export interface SceneWithCuts extends SceneRecord {
+  cuts: CutRecord[];
+}
+
+export interface ProductionDetailPayload {
+  production: ProductionSummary;
+  scenes: SceneWithCuts[];
+  artifacts: ArtifactRecord[];
+}

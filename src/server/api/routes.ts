@@ -29,6 +29,15 @@ export function createRoutes(context: RouteContext): Router {
     res.json({ productions: repos.productions.listForApi() });
   });
 
+  router.get("/productions/:id", (req, res) => {
+    const detail = repos.api.productionDetail(req.params.id);
+    if (!detail) {
+      res.status(404).json({ error: "Production not found" });
+      return;
+    }
+    res.json({ detail });
+  });
+
   router.get("/assets", (_req, res) => {
     res.json({ assets: repos.api.artifacts() });
   });
@@ -101,3 +110,4 @@ export function createRoutes(context: RouteContext): Router {
 
   return router;
 }
+

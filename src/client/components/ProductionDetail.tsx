@@ -1,17 +1,22 @@
+import { Eye } from "lucide-react";
 import type { GateId, ProductionSummary } from "../../shared/types";
 
 interface ProductionDetailProps {
   production: ProductionSummary;
+  selected?: boolean;
+  onSelect?: (productionId: string) => void;
 }
 
 const gates: GateId[] = ["G0", "G1", "G2", "G3", "G4"];
 
-export function ProductionDetail({ production }: ProductionDetailProps) {
+export function ProductionDetail({ production, selected = false, onSelect }: ProductionDetailProps) {
+  const title = `${production.storyName} / ${production.productionPath}`;
+
   return (
-    <article className="production-card">
+    <article className={`production-card${selected ? " is-selected" : ""}`}>
       <div className="production-card-header">
         <div>
-          <h3>{production.storyName} / {production.productionPath}</h3>
+          <h3>{title}</h3>
           <span className="source-label">Read-only source</span>
         </div>
         <span className={`detection-pill detection-${production.detectionType}`}>
@@ -34,6 +39,17 @@ export function ProductionDetail({ production }: ProductionDetailProps) {
         <div><dt>Prompts</dt><dd>{production.videoPromptCount}</dd></div>
         <div><dt>Videos</dt><dd>{production.generatedVideoCount}</dd></div>
       </dl>
+      {onSelect && (
+        <button
+          className="secondary-button detail-button"
+          type="button"
+          aria-label={`Show details for ${title}`}
+          onClick={() => onSelect(production.id)}
+        >
+          <Eye size={16} />
+          {selected ? "Selected" : "Details"}
+        </button>
+      )}
     </article>
   );
 }
