@@ -80,6 +80,7 @@ describe("API", () => {
         timeRange: "00:00-00:03",
         durationSeconds: 3,
         summary: "Hero arrives",
+        details: "参照ロール: hero.png",
         lineNumber: 3,
         cuts: [
           {
@@ -90,6 +91,7 @@ describe("API", () => {
             cameraLabel: "wide",
             summary: "City reveal",
             dialogue: null,
+            details: "画面: City reveal\n参照ロール: hero.png",
             lineNumber: 4
           }
         ]
@@ -125,8 +127,12 @@ describe("API", () => {
       .expect(200)
       .expect((res) => {
         expect(res.body.detail.production).toMatchObject({ id: "story::prod", sceneCount: 1, cutCount: 1, issueCount: 1 });
-        expect(res.body.detail.scenes[0]).toMatchObject({ sceneKey: "001", title: "Opening" });
-        expect(res.body.detail.scenes[0].cuts[0]).toMatchObject({ cutKey: "1", summary: "City reveal" });
+        expect(res.body.detail.scenes[0]).toMatchObject({ sceneKey: "001", title: "Opening", details: "参照ロール: hero.png" });
+        expect(res.body.detail.scenes[0].cuts[0]).toMatchObject({
+          cutKey: "1",
+          summary: "City reveal",
+          details: "画面: City reveal\n参照ロール: hero.png"
+        });
         expect(res.body.detail.artifacts[0]).toMatchObject({ kind: "text_storyboard", gate: "G1" });
         expect(res.body.detail.issues).toHaveLength(1);
         expect(res.body.detail.issues[0]).toMatchObject({

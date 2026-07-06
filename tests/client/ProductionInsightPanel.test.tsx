@@ -4,7 +4,7 @@ import { ProductionInsightPanel } from "../../src/client/components/ProductionIn
 import type { ProductionDetailPayload } from "../../src/shared/types";
 
 describe("ProductionInsightPanel", () => {
-  it("shows parsed scenes, cuts, and source assets for the selected production", () => {
+  it("shows parsed scene boards, cuts, and source assets for the selected production", () => {
     render(
       <ProductionInsightPanel
         loading={false}
@@ -37,6 +37,7 @@ describe("ProductionInsightPanel", () => {
               timeRange: "00:00-00:03",
               durationSeconds: 3,
               summary: "Hero arrives",
+              details: null,
               lineNumber: 3,
               cuts: [
                 {
@@ -48,6 +49,7 @@ describe("ProductionInsightPanel", () => {
                   cameraLabel: "wide",
                   summary: "City reveal",
                   dialogue: null,
+                  details: null,
                   lineNumber: 4
                 }
               ]
@@ -85,12 +87,161 @@ describe("ProductionInsightPanel", () => {
     );
 
     expect(screen.getByText("Selected Production")).toBeInTheDocument();
-    expect(screen.getByText("001 Opening")).toBeInTheDocument();
+    const sceneBoards = screen.getByRole("region", { name: "Scene Boards" });
+    expect(within(sceneBoards).getByText("001 Opening")).toBeInTheDocument();
     expect(screen.getByText("City reveal")).toBeInTheDocument();
-    expect(screen.getByText("text_storyboard")).toBeInTheDocument();
+    expect(screen.getAllByText("text_storyboard").length).toBeGreaterThan(0);
     expect(screen.getByText("Scan Issues")).toBeInTheDocument();
     expect(screen.getByText("json_parse_error")).toBeInTheDocument();
     expect(screen.getByText("Invalid JSON")).toBeInTheDocument();
+  });
+  it("pairs scene text boards and storyboard images by scene", () => {
+    render(
+      <ProductionInsightPanel
+        loading={false}
+        detail={{
+          production: {
+            id: "story::prod",
+            storyName: "story",
+            productionPath: "prod",
+            absolutePath: "D:\\prod",
+            detectionType: "manual",
+            gates: { G0: "missing", G1: "detected", G2: "detected", G3: "missing", G4: "missing" },
+            sceneCount: 1,
+            cutCount: 1,
+            storyboardSheetCount: 1,
+            videoPromptCount: 0,
+            generatedVideoCount: 0,
+            approvalCount: 0,
+            issueCount: 0,
+            lastContentMtime: null,
+            checked: false,
+            tags: []
+          },
+          scenes: [
+            {
+              id: "scene-1",
+              productionId: "story::prod",
+              sourceArtifactId: "text-1",
+              sceneKey: "001",
+              title: "Opening",
+              timeRange: "00:00-00:03",
+              durationSeconds: 3,
+              summary: "Hero arrives",
+              details: "参照ロール: reference_role_scene_001.png",
+              lineNumber: 3,
+              cuts: [
+                {
+                  id: "cut-1",
+                  sceneId: "scene-1",
+                  cutKey: "1",
+                  timeRange: "00:00-00:01",
+                  durationSeconds: 1,
+                  cameraLabel: "wide",
+                  summary: "City reveal",
+                  dialogue: null,
+                  details: "画面: City reveal\n参照ロール: reference_role_scene_001.png",
+                  lineNumber: 4
+                }
+              ]
+            }
+          ],
+          manualNote: "",
+          issues: [],
+          artifacts: [
+            {
+              id: "text-1",
+              productionId: "story::prod",
+              kind: "text_storyboard",
+              gate: "G1",
+              relativePath: "stories/story/02_Anime/storyboards/prod/scene_001_text.md",
+              absolutePath: "D:\\prod\\scene_001_text.md",
+              extension: ".md",
+              sizeBytes: 120,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            },
+            {
+              id: "storyboard-1",
+              productionId: "story::prod",
+              kind: "storyboard_sheet",
+              gate: "G2",
+              relativePath: "stories/story/02_Anime/storyboards/prod/storyboard_sheets/scene_001_sheet.png",
+              absolutePath: "D:\\prod\\scene_001_sheet.png",
+              extension: ".png",
+              sizeBytes: 200,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            },
+            {
+              id: "reference-1",
+              productionId: "story::prod",
+              kind: "image",
+              gate: null,
+              relativePath: "stories/story/02_Anime/storyboards/prod/reference_role_scene_001.png",
+              absolutePath: "D:\\prod\\reference_role_scene_001.png",
+              extension: ".png",
+              sizeBytes: 180,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            },
+            {
+              id: "storyboard-2",
+              productionId: "story::prod",
+              kind: "storyboard_sheet",
+              gate: "G2",
+              relativePath: "stories/story/02_Anime/storyboards/EP2/01b/storyboard_sheets/EP2_01b_cut_sheet_02.png",
+              absolutePath: "D:\\prod\\EP2_01b_cut_sheet_02.png",
+              extension: ".png",
+              sizeBytes: 200,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            },
+            {
+              id: "storyboard-10",
+              productionId: "story::prod",
+              kind: "storyboard_sheet",
+              gate: "G2",
+              relativePath: "stories/story/02_Anime/storyboards/EP2/01b/storyboard_sheets/EP2_01b_cut_sheet_10.png",
+              absolutePath: "D:\\prod\\EP2_01b_cut_sheet_10.png",
+              extension: ".png",
+              sizeBytes: 200,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            }
+          ]
+        }}
+      />
+    );
+
+    const sceneBoards = screen.getByRole("region", { name: "Scene Boards" });
+    const sceneBoard = within(sceneBoards).getByRole("article", { name: "001 Opening" });
+    expect(within(sceneBoard).getAllByText("00:00-00:03").length).toBeGreaterThan(0);
+    expect(within(sceneBoard).getAllByText("3s").length).toBeGreaterThan(0);
+    expect(within(sceneBoard).getByText("Line 3")).toBeInTheDocument();
+    expect(within(sceneBoard).getByText("CUT 1 00:00-00:01")).toBeInTheDocument();
+    expect(within(sceneBoard).getByText("wide")).toBeInTheDocument();
+    expect(within(sceneBoard).getByText("City reveal")).toBeInTheDocument();
+
+    const sheetLink = within(sceneBoard).getByRole("link", {
+      name: "stories/story/02_Anime/storyboards/prod/storyboard_sheets/scene_001_sheet.png"
+    });
+    expect(sheetLink).toHaveAttribute("href", "/api/assets/storyboard-1/file");
+    expect(sheetLink).toHaveAttribute("target", "_blank");
+    expect(within(sheetLink).getByRole("img", {
+      name: "stories/story/02_Anime/storyboards/prod/storyboard_sheets/scene_001_sheet.png"
+    })).toHaveAttribute("src", "/api/assets/storyboard-1/file");
+
+    const referenceLink = within(sceneBoard).getByRole("link", {
+      name: "stories/story/02_Anime/storyboards/prod/reference_role_scene_001.png"
+    });
+    expect(referenceLink).toHaveAttribute("href", "/api/assets/reference-1/file");
+    expect(within(sceneBoard).queryByRole("link", {
+      name: "stories/story/02_Anime/storyboards/EP2/01b/storyboard_sheets/EP2_01b_cut_sheet_02.png"
+    })).not.toBeInTheDocument();
+    expect(within(sceneBoard).queryByRole("link", {
+      name: "stories/story/02_Anime/storyboards/EP2/01b/storyboard_sheets/EP2_01b_cut_sheet_10.png"
+    })).not.toBeInTheDocument();
   });
   it("shows G0-G4 gate statuses for the selected production", () => {
     render(
@@ -203,8 +354,8 @@ describe("ProductionInsightPanel", () => {
       />
     );
 
-    const storyboardGallery = screen.getByRole("region", { name: "Storyboard Gallery" });
-    expect(within(storyboardGallery).getByRole("img", {
+    const sceneBoards = screen.getByRole("region", { name: "Scene Boards" });
+    expect(within(sceneBoards).getByRole("img", {
       name: "stories/story/02_Anime/storyboards/prod/storyboard_sheets/sheet_001.png"
     })).toHaveAttribute("src", "/api/assets/storyboard-1/file");
     const videoPromptList = screen.getByRole("region", { name: "Video Prompt List" });
@@ -282,7 +433,7 @@ describe("ProductionInsightPanel", () => {
       />
     );
 
-    const textStoryboardList = screen.getByRole("region", { name: "Text Storyboard List" });
+    const textStoryboardList = screen.getByRole("region", { name: "Text Storyboards" });
     expect(within(textStoryboardList).getByText("stories/story/02_Anime/storyboards/prod/02_テキストコンテ.md")).toBeInTheDocument();
     fireEvent.click(within(textStoryboardList).getByRole("button", {
       name: "Preview stories/story/02_Anime/storyboards/prod/02_テキストコンテ.md"

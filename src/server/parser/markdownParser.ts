@@ -5,6 +5,7 @@ export interface ParsedCut {
   cameraLabel: string | null;
   summary: string | null;
   dialogue: string | null;
+  details: string | null;
   lineNumber: number;
 }
 
@@ -14,6 +15,7 @@ export interface ParsedScene {
   timeRange: string | null;
   durationSeconds: number | null;
   summary: string | null;
+  details: string | null;
   lineNumber: number;
   cuts: ParsedCut[];
 }
@@ -66,6 +68,7 @@ function extractSceneFromFileName(filePath: string): ParsedScene | null {
     timeRange: null,
     durationSeconds: null,
     summary: null,
+    details: null,
     lineNumber: 1,
     cuts: []
   };
@@ -73,6 +76,12 @@ function extractSceneFromFileName(filePath: string): ParsedScene | null {
 
 function appendFieldValue(current: string | null, value: string): string {
   return current ? `${current}\n${value}` : value;
+}
+
+function cleanDetailLine(line: string): string | null {
+  const trimmed = line.trim();
+  if (!trimmed || /^#{1,6}\s/.test(trimmed)) return null;
+  return trimmed.replace(/^\s*-\s*/, "").trim() || null;
 }
 
 export function parseMarkdownEmbeddedArtifacts(markdown: string): ParsedEmbeddedArtifact[] {
@@ -109,6 +118,7 @@ export function parseMarkdownScenes(markdown: string, sourcePath: string): Parse
         timeRange: null,
         durationSeconds: null,
         summary: null,
+        details: null,
         lineNumber: index + 1,
         cuts: []
       };
@@ -125,6 +135,7 @@ export function parseMarkdownScenes(markdown: string, sourcePath: string): Parse
         timeRange: null,
         durationSeconds: null,
         summary: null,
+        details: null,
         lineNumber: index + 1,
         cuts: []
       };
@@ -136,7 +147,32 @@ export function parseMarkdownScenes(markdown: string, sourcePath: string): Parse
 
     if (!current) continue;
 
+    let matchedCut = false;
+    for (const pattern of cutPatterns) {
+      const cutMatch = line.match(pattern);
+      if (!cutMatch) continue;
+      const timeRange = normalizeTimeRange(cutMatch[2]);
+      const cut: ParsedCut = {
+        cutKey: normalizeDigits(cutMatch[1]),
+        timeRange,
+        durationSeconds: durationFromRange(timeRange),
+        cameraLabel: (cutMatch[3] ?? "").trim() || null,
+        summary: null,
+        dialogue: null,
+        details: cleanDetailLine(line),
+        lineNumber: index + 1
+      };
+      current.cuts.push(cut);
+      currentCut = cut;
+      matchedCut = true;
+      break;
+    }
+    if (matchedCut) continue;
+
     if (currentCut) {
+      const detailLine = cleanDetailLine(line);
+      if (detailLine) currentCut.details = appendFieldValue(currentCut.details, detailLine);
+
       const cutSummaryMatch = line.match(/^\s*-\s*(?:画面|映像|内容|アクション|プロンプト|Prompt)[:：]\s*(.+)$/i);
       if (cutSummaryMatch) {
         currentCut.summary = appendFieldValue(currentCut.summary, cutSummaryMatch[1].trim());
@@ -161,26 +197,8 @@ export function parseMarkdownScenes(markdown: string, sourcePath: string): Parse
       current.summary = summaryMatch[1].trim();
     }
 
-    let matchedCut = false;
-    for (const pattern of cutPatterns) {
-      const cutMatch = line.match(pattern);
-      if (!cutMatch) continue;
-      const timeRange = normalizeTimeRange(cutMatch[2]);
-      const cut: ParsedCut = {
-        cutKey: normalizeDigits(cutMatch[1]),
-        timeRange,
-        durationSeconds: durationFromRange(timeRange),
-        cameraLabel: (cutMatch[3] ?? "").trim() || null,
-        summary: null,
-        dialogue: null,
-        lineNumber: index + 1
-      };
-      current.cuts.push(cut);
-      currentCut = cut;
-      matchedCut = true;
-      break;
-    }
-    if (matchedCut) continue;
+    const detailLine = cleanDetailLine(line);
+    if (detailLine) current.details = appendFieldValue(current.details, detailLine);
   }
 
   return scenes;

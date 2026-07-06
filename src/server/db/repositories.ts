@@ -41,6 +41,7 @@ export interface SceneUpsert {
   timeRange: string | null;
   durationSeconds: number | null;
   summary: string | null;
+  details: string | null;
   lineNumber: number;
   cuts: Array<{
     id: string;
@@ -50,6 +51,7 @@ export interface SceneUpsert {
     cameraLabel: string | null;
     summary: string | null;
     dialogue: string | null;
+    details: string | null;
     lineNumber: number;
   }>;
 }
@@ -240,19 +242,19 @@ export function createRepositories(db: Database.Database) {
           const insertScene = db.prepare(`
             INSERT INTO scenes (
               id, production_id, source_artifact_id, scene_key, title, time_range,
-              duration_seconds, summary, line_number
+              duration_seconds, summary, details, line_number
             ) VALUES (
               @id, @productionId, @sourceArtifactId, @sceneKey, @title, @timeRange,
-              @durationSeconds, @summary, @lineNumber
+              @durationSeconds, @summary, @details, @lineNumber
             )
           `);
           const insertCut = db.prepare(`
             INSERT INTO cuts (
               id, scene_id, cut_key, time_range, duration_seconds, camera_label,
-              summary, dialogue, line_number
+              summary, dialogue, details, line_number
             ) VALUES (
               @id, @sceneId, @cutKey, @timeRange, @durationSeconds, @cameraLabel,
-              @summary, @dialogue, @lineNumber
+              @summary, @dialogue, @details, @lineNumber
             )
           `);
           for (const scene of scenes) {
@@ -432,6 +434,7 @@ export function createRepositories(db: Database.Database) {
             time_range AS timeRange,
             duration_seconds AS durationSeconds,
             summary,
+            details,
             line_number AS lineNumber
           FROM scenes
           WHERE production_id = ?
@@ -447,6 +450,7 @@ export function createRepositories(db: Database.Database) {
             camera_label AS cameraLabel,
             summary,
             dialogue,
+            details,
             line_number AS lineNumber
           FROM cuts
           WHERE scene_id IN (SELECT id FROM scenes WHERE production_id = ?)

@@ -87,6 +87,7 @@ export interface SceneRecord {
   timeRange: string | null;
   durationSeconds: number | null;
   summary: string | null;
+  details: string | null;
   lineNumber: number;
 }
 
@@ -99,6 +100,7 @@ export interface CutRecord {
   cameraLabel: string | null;
   summary: string | null;
   dialogue: string | null;
+  details: string | null;
   lineNumber: number;
 }
 

@@ -103,6 +103,7 @@ export async function indexRoot(input: IndexRootInput): Promise<void> {
               timeRange: scene.timeRange,
               durationSeconds: scene.durationSeconds,
               summary: scene.summary,
+              details: scene.details,
               lineNumber: scene.lineNumber,
               cuts: scene.cuts.map((cut) => ({
                 id: stableId(`cut:${artifact.id}:${scene.sceneKey}:${cut.cutKey}:${cut.lineNumber}`),

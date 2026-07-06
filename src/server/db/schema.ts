@@ -1,5 +1,11 @@
 import type Database from "better-sqlite3";
 
+function addColumnIfMissing(db: Database.Database, table: string, column: string, definition: string): void {
+  const columns = db.pragma(`table_info(${table})`) as Array<{ name: string }>;
+  if (columns.some((item) => item.name === column)) return;
+  db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
+}
+
 export function migrate(db: Database.Database): void {
   db.pragma("journal_mode = WAL");
   db.exec(`
@@ -39,6 +45,7 @@ export function migrate(db: Database.Database): void {
       time_range TEXT,
       duration_seconds REAL,
       summary TEXT,
+      details TEXT,
       line_number INTEGER NOT NULL,
       FOREIGN KEY (production_id) REFERENCES productions(id)
     );
@@ -52,6 +59,7 @@ export function migrate(db: Database.Database): void {
       camera_label TEXT,
       summary TEXT,
       dialogue TEXT,
+      details TEXT,
       line_number INTEGER NOT NULL,
       FOREIGN KEY (scene_id) REFERENCES scenes(id)
     );
@@ -127,4 +135,7 @@ export function migrate(db: Database.Database): void {
       message TEXT NOT NULL
     );
   `);
+
+  addColumnIfMissing(db, "scenes", "details", "TEXT");
+  addColumnIfMissing(db, "cuts", "details", "TEXT");
 }

@@ -50,6 +50,39 @@ Hold on sky.
     expect(scenes[0].cuts[0].cameraLabel).toBe("STATIC / CLOUDY SKY");
   });
 
+  it("preserves arbitrary scene and cut detail lines", () => {
+    const markdown = `# Sample
+
+## シーン 002 追跡
+
+- 時間: 00:06-00:12 / 6秒
+- 内容: 路地を抜ける。
+- 天候: 雨
+- CUT PLAN:
+  - CUT3 [00:06-00:09] HANDHELD:
+    - 画面: 主人公が走る。
+    - 参照ロール: hero_run.png
+    - 音: 足音と雨
+`;
+
+    const scenes = parseMarkdownScenes(markdown, "02_テキストコンテ.md");
+
+    expect(scenes[0]).toMatchObject({
+      summary: "路地を抜ける。",
+      details: expect.stringContaining("天候: 雨")
+    });
+    expect(scenes[0].cuts[0]).toMatchObject({
+      cutKey: "3",
+      timeRange: "00:06-00:09",
+      cameraLabel: "HANDHELD",
+      summary: "主人公が走る。",
+      details: expect.stringContaining("参照ロール: hero_run.png")
+    });
+    expect(scenes[0].cuts[0]).toMatchObject({
+      details: expect.stringContaining("音: 足音と雨")
+    });
+  });
+
   it("detects embedded video prompt sections in combined markdown files", () => {
     const markdown = `# 02 テキストコンテ
 
