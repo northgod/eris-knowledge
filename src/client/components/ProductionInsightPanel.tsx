@@ -18,7 +18,7 @@ export function ProductionInsightPanel({ detail, loading, onSaveNote, onToggleCh
 
   if (loading) {
     return (
-      <section className="insight-panel">
+      <section className="insight-panel" id="selected-production-panel">
         <h2><ListTree size={18} /> Selected Production</h2>
         <p className="quiet-text">Loading selected production details.</p>
       </section>
@@ -27,7 +27,7 @@ export function ProductionInsightPanel({ detail, loading, onSaveNote, onToggleCh
 
   if (!detail) {
     return (
-      <section className="insight-panel">
+      <section className="insight-panel" id="selected-production-panel">
         <h2><ListTree size={18} /> Selected Production</h2>
         <p className="quiet-text">Select a production to inspect parsed scenes, cuts, and source assets.</p>
       </section>
@@ -38,7 +38,7 @@ export function ProductionInsightPanel({ detail, loading, onSaveNote, onToggleCh
   const scenePreview = detail.scenes.slice(0, 8);
 
   return (
-    <section className="insight-panel">
+    <section className="insight-panel" id="selected-production-panel">
       <div className="insight-header">
         <div>
           <h2><ListTree size={18} /> Selected Production</h2>
@@ -115,3 +115,4 @@ export function ProductionInsightPanel({ detail, loading, onSaveNote, onToggleCh
     </section>
   );
 }
+

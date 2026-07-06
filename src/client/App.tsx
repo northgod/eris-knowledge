@@ -80,6 +80,13 @@ export function App() {
     }
   }
 
+  function handleAttentionSelect(productionId: string) {
+    setSelectedProductionId(productionId);
+    window.requestAnimationFrame(() => {
+      document.getElementById("selected-production-panel")?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  }
+
   useEffect(() => {
     void load();
   }, []);
@@ -148,8 +155,15 @@ export function App() {
           onToggleChecked={handleToggleChecked}
         />
       )}
-      {!loading && <NeedsAttention productions={productions} />}
+      {!loading && (
+        <NeedsAttention
+          productions={productions}
+          selectedProductionId={selectedProductionId}
+          onSelect={handleAttentionSelect}
+        />
+      )}
       {!loading && <AssetBrowser assets={assets} />}
     </main>
   );
 }
+

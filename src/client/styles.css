@@ -594,3 +594,34 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+.attention-list li.is-selected {
+  border-color: #315c6f;
+  box-shadow: 0 0 0 2px rgba(49, 92, 111, 0.12);
+}
+
+.attention-list li > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.attention-list li strong,
+.attention-list li span {
+  overflow-wrap: anywhere;
+}
+
+.attention-detail-button {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 560px) {
+  .attention-list li {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .attention-detail-button {
+    justify-content: center;
+  }
+}
