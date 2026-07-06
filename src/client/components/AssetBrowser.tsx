@@ -1,16 +1,24 @@
-import { Search } from "lucide-react";
+import { Eye, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { ArtifactRecord } from "../../shared/types";
+import type { ArtifactRecord, AssetPreviewPayload } from "../../shared/types";
 
 interface AssetBrowserProps {
   assets: ArtifactRecord[];
+  selectedPreview?: AssetPreviewPayload | null;
+  previewLoading?: boolean;
+  onPreviewAsset?: (assetId: string) => void | Promise<void>;
 }
 
 function uniqueSorted(values: Array<string | null>): string[] {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value)))).sort();
 }
 
-export function AssetBrowser({ assets }: AssetBrowserProps) {
+export function AssetBrowser({
+  assets,
+  selectedPreview = null,
+  previewLoading = false,
+  onPreviewAsset
+}: AssetBrowserProps) {
   const [productionFilter, setProductionFilter] = useState("all");
   const [kindFilter, setKindFilter] = useState("all");
   const [gateFilter, setGateFilter] = useState("all");
@@ -90,6 +98,7 @@ export function AssetBrowser({ assets }: AssetBrowserProps) {
               <th>Gate</th>
               <th>Path</th>
               <th>Size</th>
+              <th>Preview</th>
             </tr>
           </thead>
           <tbody>
@@ -99,11 +108,43 @@ export function AssetBrowser({ assets }: AssetBrowserProps) {
                 <td>{asset.gate ?? "-"}</td>
                 <td><code>{asset.relativePath}</code></td>
                 <td>{asset.sizeBytes}</td>
+                <td>
+                  <button
+                    className="secondary-button asset-preview-button"
+                    type="button"
+                    aria-label={`Preview ${asset.relativePath}`}
+                    onClick={() => void onPreviewAsset?.(asset.id)}
+                  >
+                    <Eye size={14} />
+                    Preview
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <section className="asset-preview-panel" aria-live="polite">
+        <h3>Read-only Preview</h3>
+        {previewLoading ? (
+          <p className="quiet-text">Loading preview.</p>
+        ) : selectedPreview ? (
+          <div className="asset-preview-content">
+            <div className="asset-preview-meta">
+              <span>{selectedPreview.kind}</span>
+              <span>{selectedPreview.sizeBytes} bytes</span>
+              <span>{selectedPreview.truncated ? "truncated" : "full preview"}</span>
+            </div>
+            {selectedPreview.mode === "text" ? (
+              <pre>{selectedPreview.text}</pre>
+            ) : (
+              <p className="quiet-text">Inline preview is not available for this asset type. Use the path in the table for external review.</p>
+            )}
+          </div>
+        ) : (
+          <p className="quiet-text">Select an asset to preview text-based production material without editing source files.</p>
+        )}
+      </section>
     </section>
   );
 }

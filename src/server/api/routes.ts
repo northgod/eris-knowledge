@@ -1,11 +1,62 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import type Database from "better-sqlite3";
 import { Router } from "express";
+import type { ArtifactRecord, AssetPreviewPayload } from "../../shared/types";
 import { createRepositories } from "../db/repositories";
 import { indexRoot } from "../indexer/indexer";
 
 export interface RouteContext {
   db: Database.Database;
   scarletRoot: string;
+}
+
+const TEXT_PREVIEW_LIMIT = 20_000;
+const TEXT_PREVIEW_EXTENSIONS = new Set([".md", ".json", ".txt", ".csv", ".tsv", ".log"]);
+const TEXT_PREVIEW_KINDS = new Set([
+  "brief",
+  "script",
+  "text_storyboard",
+  "video_prompt",
+  "codex_task",
+  "approval",
+  "orchestrator_state",
+  "markdown",
+  "json"
+]);
+
+function isInsideRoot(root: string, target: string): boolean {
+  const resolvedRoot = path.resolve(root).toLowerCase();
+  const resolvedTarget = path.resolve(target).toLowerCase();
+  return resolvedTarget === resolvedRoot || resolvedTarget.startsWith(`${resolvedRoot}${path.sep}`);
+}
+
+function isTextPreviewable(asset: ArtifactRecord): boolean {
+  return TEXT_PREVIEW_EXTENSIONS.has(asset.extension.toLowerCase()) || TEXT_PREVIEW_KINDS.has(asset.kind);
+}
+
+async function createAssetPreview(asset: ArtifactRecord): Promise<AssetPreviewPayload> {
+  const base = {
+    id: asset.id,
+    relativePath: asset.relativePath,
+    absolutePath: asset.absolutePath,
+    kind: asset.kind,
+    sizeBytes: asset.sizeBytes,
+    mtime: asset.mtime
+  };
+
+  if (!isTextPreviewable(asset)) {
+    return { ...base, mode: "metadata", text: null, truncated: false };
+  }
+
+  const content = await fs.readFile(asset.absolutePath, "utf8");
+  const truncated = content.length > TEXT_PREVIEW_LIMIT;
+  return {
+    ...base,
+    mode: "text",
+    text: truncated ? content.slice(0, TEXT_PREVIEW_LIMIT) : content,
+    truncated
+  };
 }
 
 export function createRoutes(context: RouteContext): Router {
@@ -40,6 +91,23 @@ export function createRoutes(context: RouteContext): Router {
 
   router.get("/assets", (_req, res) => {
     res.json({ assets: repos.api.artifacts() });
+  });
+
+  router.get("/assets/:id/preview", async (req, res, next) => {
+    try {
+      const asset = repos.api.artifactById(req.params.id);
+      if (!asset) {
+        res.status(404).json({ error: "Asset not found" });
+        return;
+      }
+      if (!isInsideRoot(context.scarletRoot, asset.absolutePath)) {
+        res.status(403).json({ error: "Asset is outside the configured read-only root" });
+        return;
+      }
+      res.json({ preview: await createAssetPreview(asset) });
+    } catch (error) {
+      next(error);
+    }
   });
 
   router.get("/needs-attention", (_req, res) => {

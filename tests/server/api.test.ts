@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import Database from "better-sqlite3";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
@@ -138,4 +141,51 @@ describe("API", () => {
         expect(res.body.detail.production.checked).toBe(true);
       });
   });
+  it("returns a read-only text preview for an indexed asset", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "eris-preview-"));
+    const previewPath = path.join(tempDir, "cut_001.md");
+    fs.writeFileSync(previewPath, "# Scene 001\nCUT 1: opening prompt", "utf8");
+
+    const db = new Database(":memory:");
+    migrate(db);
+    const repos = createRepositories(db);
+    repos.productions.upsert({
+      id: "story::prod",
+      storyName: "story",
+      productionPath: "prod",
+      absolutePath: tempDir,
+      detectionType: "manual",
+      lastContentMtime: null
+    });
+    repos.artifacts.replaceForProduction("story::prod", [
+      {
+        id: "artifact-preview",
+        productionId: "story::prod",
+        kind: "video_prompt",
+        gate: "G3",
+        relativePath: "stories/story/02_Anime/storyboards/prod/video_prompts/cut_001.md",
+        absolutePath: previewPath,
+        extension: ".md",
+        sizeBytes: 36,
+        mtime: "2026-07-06T00:00:00.000Z",
+        contentHash: null
+      }
+    ]);
+
+    const app = createApp({ db, scarletRoot: tempDir });
+
+    await request(app)
+      .get(`/api/assets/${encodeURIComponent("artifact-preview")}/preview`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.preview).toMatchObject({
+          id: "artifact-preview",
+          relativePath: "stories/story/02_Anime/storyboards/prod/video_prompts/cut_001.md",
+          mode: "text",
+          text: "# Scene 001\nCUT 1: opening prompt",
+          truncated: false
+        });
+      });
+  });
 });
+

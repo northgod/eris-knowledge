@@ -1,4 +1,4 @@
-import type { ArtifactRecord, ProductionDetailPayload, ProductionSummary } from "../shared/types";
+import type { ArtifactRecord, AssetPreviewPayload, ProductionDetailPayload, ProductionSummary } from "../shared/types";
 
 export async function fetchProductions(): Promise<ProductionSummary[]> {
   const response = await fetch("/api/productions");
@@ -12,6 +12,13 @@ export async function fetchAssets(): Promise<ArtifactRecord[]> {
   if (!response.ok) throw new Error(`Failed to fetch assets: ${response.status}`);
   const data = (await response.json()) as { assets: ArtifactRecord[] };
   return data.assets;
+}
+
+export async function fetchAssetPreview(assetId: string): Promise<AssetPreviewPayload> {
+  const response = await fetch(`/api/assets/${encodeURIComponent(assetId)}/preview`);
+  if (!response.ok) throw new Error(`Failed to fetch asset preview: ${response.status}`);
+  const data = (await response.json()) as { preview: AssetPreviewPayload };
+  return data.preview;
 }
 
 export async function fetchProductionDetail(productionId: string): Promise<ProductionDetailPayload> {

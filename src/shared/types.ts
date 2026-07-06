@@ -64,6 +64,20 @@ export interface ArtifactRecord {
   contentHash: string | null;
 }
 
+export type AssetPreviewMode = "text" | "metadata";
+
+export interface AssetPreviewPayload {
+  id: string;
+  relativePath: string;
+  absolutePath: string;
+  kind: ArtifactKind;
+  mode: AssetPreviewMode;
+  text: string | null;
+  truncated: boolean;
+  sizeBytes: number;
+  mtime: string;
+}
+
 export interface SceneRecord {
   id: string;
   productionId: string;

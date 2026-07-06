@@ -690,4 +690,56 @@ body {
     grid-template-columns: 1fr;
   }
 }
+.asset-preview-button {
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.asset-preview-panel {
+  background: white;
+  border: 1px solid #d9e1e5;
+  border-radius: 8px;
+  margin-top: 12px;
+  padding: 14px;
+}
+
+.asset-preview-panel h3 {
+  font-size: 15px;
+  margin: 0 0 10px;
+}
+
+.asset-preview-content {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.asset-preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.asset-preview-meta span {
+  background: #f5f7f8;
+  border: 1px solid #e3eaee;
+  border-radius: 999px;
+  color: #1d3844;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+}
+
+.asset-preview-content pre {
+  background: #16232b;
+  border-radius: 8px;
+  color: white;
+  font: 12px/1.5 Consolas, "Courier New", monospace;
+  margin: 0;
+  max-height: 420px;
+  overflow: auto;
+  padding: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 

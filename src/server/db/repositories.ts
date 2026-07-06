@@ -316,6 +316,24 @@ export function createRepositories(db: Database.Database) {
           ORDER BY kind, relative_path
         `).all() as ArtifactRecord[];
       },
+      artifactById(assetId: string): ArtifactRecord | null {
+        const asset = db.prepare(`
+          SELECT
+            id,
+            production_id AS productionId,
+            kind,
+            gate,
+            relative_path AS relativePath,
+            absolute_path AS absolutePath,
+            extension,
+            size_bytes AS sizeBytes,
+            mtime,
+            content_hash AS contentHash
+          FROM artifacts
+          WHERE id = ?
+        `).get(assetId) as ArtifactRecord | undefined;
+        return asset ?? null;
+      },
       productionDetail(productionId: string): ProductionDetailPayload | null {
         const production = createRepositories(db).productions.listForApi().find((item) => item.id === productionId);
         if (!production) return null;
@@ -383,5 +401,4 @@ export function createRepositories(db: Database.Database) {
     }
   };
 }
-
 

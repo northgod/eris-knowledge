@@ -1,8 +1,9 @@
 import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { ArtifactRecord, ProductionDetailPayload, ProductionSummary } from "../shared/types";
+import type { ArtifactRecord, AssetPreviewPayload, ProductionDetailPayload, ProductionSummary } from "../shared/types";
 import {
   addProductionTag,
+  fetchAssetPreview,
   fetchAssets,
   fetchProductionDetail,
   fetchProductions,
@@ -25,6 +26,8 @@ export function App() {
   const [assets, setAssets] = useState<ArtifactRecord[]>([]);
   const [selectedProductionId, setSelectedProductionId] = useState<string | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<ProductionDetailPayload | null>(null);
+  const [selectedAssetPreview, setSelectedAssetPreview] = useState<AssetPreviewPayload | null>(null);
+  const [assetPreviewLoading, setAssetPreviewLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +54,7 @@ export function App() {
       const [nextProductions, nextAssets] = await Promise.all([fetchProductions(), fetchAssets()]);
       setProductions(nextProductions);
       setAssets(nextAssets);
+      setSelectedAssetPreview(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -112,6 +116,18 @@ export function App() {
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }
+
+  async function handlePreviewAsset(assetId: string) {
+    setAssetPreviewLoading(true);
+    setError(null);
+    try {
+      setSelectedAssetPreview(await fetchAssetPreview(assetId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setAssetPreviewLoading(false);
     }
   }
 
@@ -198,7 +214,14 @@ export function App() {
           onSelect={handleAttentionSelect}
         />
       )}
-      {!loading && <AssetBrowser assets={assets} />}
+      {!loading && (
+        <AssetBrowser
+          assets={assets}
+          selectedPreview={selectedAssetPreview}
+          previewLoading={assetPreviewLoading}
+          onPreviewAsset={handlePreviewAsset}
+        />
+      )}
     </main>
   );
 }

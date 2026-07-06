@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AssetBrowser } from "../../src/client/components/AssetBrowser";
 import type { ArtifactRecord } from "../../src/shared/types";
 
@@ -61,6 +61,38 @@ describe("AssetBrowser", () => {
 
     const rows = table.getAllByRole("row");
     expect(rows).toHaveLength(2);
+  });
+  it("requests and renders a read-only text preview for an asset", () => {
+    const onPreviewAsset = vi.fn();
+    render(
+      <AssetBrowser
+        assets={assets}
+        selectedPreview={{
+          id: "asset-2",
+          relativePath: "stories/story/02_Anime/storyboards/EP2/01b/video_prompts/cut_001.md",
+          absolutePath: "D:\\story\\cut_001.md",
+          kind: "video_prompt",
+          mode: "text",
+          text: "# Scene 001\nCUT 1: opening prompt",
+          truncated: false,
+          sizeBytes: 120,
+          mtime: "2026-07-06T00:00:00.000Z"
+        }}
+        previewLoading={false}
+        onPreviewAsset={onPreviewAsset}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Preview stories/story/02_Anime/storyboards/EP2/01b/video_prompts/cut_001.md"
+      })
+    );
+
+    expect(onPreviewAsset).toHaveBeenCalledWith("asset-2");
+    expect(screen.getByText("Read-only Preview")).toBeInTheDocument();
+    expect(screen.getByText(/# Scene 001/)).toBeInTheDocument();
+    expect(screen.getByText("stories/story/02_Anime/storyboards/EP2/01b/video_prompts/cut_001.md")).toBeInTheDocument();
   });
 });
 
