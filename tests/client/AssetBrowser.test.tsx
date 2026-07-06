@@ -42,7 +42,46 @@ const assets: ArtifactRecord[] = [
   }
 ];
 
+const storyFilterAssets: ArtifactRecord[] = [
+  {
+    id: "story-a-asset",
+    productionId: "story-a::EP1/01",
+    kind: "text_storyboard",
+    gate: "G1",
+    relativePath: "stories/story-a/02_Anime/storyboards/EP1/01/text_storyboard.md",
+    absolutePath: "D:\\story-a\\text_storyboard.md",
+    extension: ".md",
+    sizeBytes: 90,
+    mtime: "2026-07-06T00:00:00.000Z",
+    contentHash: null
+  },
+  {
+    id: "story-b-asset",
+    productionId: "story-b::EP1/01",
+    kind: "video_prompt",
+    gate: "G3",
+    relativePath: "stories/story-b/02_Anime/storyboards/EP1/01/video_prompts/cut_001.md",
+    absolutePath: "D:\\story-b\\cut_001.md",
+    extension: ".md",
+    sizeBytes: 120,
+    mtime: "2026-07-06T00:00:00.000Z",
+    contentHash: null
+  }
+];
+
 describe("AssetBrowser", () => {
+  it("filters assets by story before production filtering", () => {
+    render(<AssetBrowser assets={storyFilterAssets} />);
+
+    fireEvent.change(screen.getByLabelText("Story"), { target: { value: "story-a" } });
+
+    expect(screen.getByText("Showing 1 of 2 assets")).toBeInTheDocument();
+
+    const table = within(screen.getByRole("table"));
+    expect(table.getByText("stories/story-a/02_Anime/storyboards/EP1/01/text_storyboard.md")).toBeInTheDocument();
+    expect(table.queryByText("stories/story-b/02_Anime/storyboards/EP1/01/video_prompts/cut_001.md")).not.toBeInTheDocument();
+  });
+
   it("filters assets by production, kind, gate, and search text", () => {
     render(<AssetBrowser assets={assets} />);
 

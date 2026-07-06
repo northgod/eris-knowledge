@@ -15,6 +15,10 @@ function uniqueSorted(values: Array<string | null>): string[] {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value)))).sort();
 }
 
+function storyNameForProduction(productionId: string): string {
+  return productionId.split("::")[0] || productionId;
+}
+
 function isImageAsset(asset: ArtifactRecord): boolean {
   return imageExtensions.has(asset.extension.toLowerCase()) || asset.kind === "storyboard_sheet" || asset.kind === "image";
 }
@@ -29,11 +33,13 @@ export function AssetBrowser({
   previewLoading = false,
   onPreviewAsset
 }: AssetBrowserProps) {
+  const [storyFilter, setStoryFilter] = useState("all");
   const [productionFilter, setProductionFilter] = useState("all");
   const [kindFilter, setKindFilter] = useState("all");
   const [gateFilter, setGateFilter] = useState("all");
   const [searchText, setSearchText] = useState("");
 
+  const stories = useMemo(() => uniqueSorted(assets.map((asset) => storyNameForProduction(asset.productionId))), [assets]);
   const productions = useMemo(() => uniqueSorted(assets.map((asset) => asset.productionId)), [assets]);
   const kinds = useMemo(() => uniqueSorted(assets.map((asset) => asset.kind)), [assets]);
   const gates = useMemo(() => uniqueSorted(assets.map((asset) => asset.gate)), [assets]);
@@ -41,6 +47,7 @@ export function AssetBrowser({
   const filteredAssets = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase();
     return assets.filter((asset) => {
+      const matchesStory = storyFilter === "all" || storyNameForProduction(asset.productionId) === storyFilter;
       const matchesProduction = productionFilter === "all" || asset.productionId === productionFilter;
       const matchesKind = kindFilter === "all" || asset.kind === kindFilter;
       const matchesGate = gateFilter === "all" || asset.gate === gateFilter;
@@ -49,9 +56,9 @@ export function AssetBrowser({
         asset.relativePath.toLowerCase().includes(normalizedSearch) ||
         asset.kind.toLowerCase().includes(normalizedSearch) ||
         asset.productionId.toLowerCase().includes(normalizedSearch);
-      return matchesProduction && matchesKind && matchesGate && matchesSearch;
+      return matchesStory && matchesProduction && matchesKind && matchesGate && matchesSearch;
     });
-  }, [assets, gateFilter, kindFilter, productionFilter, searchText]);
+  }, [assets, gateFilter, kindFilter, productionFilter, searchText, storyFilter]);
 
   return (
     <section className="asset-section">
@@ -60,6 +67,15 @@ export function AssetBrowser({
         <span>{`Showing ${filteredAssets.length} of ${assets.length} assets`}</span>
       </div>
       <div className="asset-filters">
+        <label>
+          <span>Story</span>
+          <select aria-label="Story" value={storyFilter} onChange={(event) => setStoryFilter(event.currentTarget.value)}>
+            <option value="all">All stories</option>
+            {stories.map((story) => (
+              <option key={story} value={story}>{story}</option>
+            ))}
+          </select>
+        </label>
         <label>
           <span>Production</span>
           <select aria-label="Production" value={productionFilter} onChange={(event) => setProductionFilter(event.currentTarget.value)}>
