@@ -388,6 +388,10 @@ body {
   margin: 0 0 10px;
 }
 
+.gate-status-block {
+  margin-bottom: 14px;
+}
+
 .scene-list,
 .asset-mini-list {
   display: grid;

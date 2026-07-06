@@ -1,6 +1,6 @@
-import { AlertTriangle, FileText, Image, ListTree, Save, Tag, Video } from "lucide-react";
+import { AlertTriangle, FileText, Image, ListChecks, ListTree, Save, Tag, Video } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { ProductionDetailPayload } from "../../shared/types";
+import type { GateId, ProductionDetailPayload } from "../../shared/types";
 
 interface ProductionInsightPanelProps {
   detail: ProductionDetailPayload | null;
@@ -9,6 +9,8 @@ interface ProductionInsightPanelProps {
   onToggleChecked?: (checked: boolean) => void | Promise<void>;
   onAddTag?: (name: string) => void | Promise<void>;
 }
+
+const gateIds: GateId[] = ["G0", "G1", "G2", "G3", "G4"];
 
 function assetFileUrl(assetId: string): string {
   return `/api/assets/${encodeURIComponent(assetId)}/file`;
@@ -76,6 +78,18 @@ export function ProductionInsightPanel({
           {detail.production.detectionType}
         </span>
       </div>
+
+      <section className="insight-block gate-status-block" aria-label="Gate Status">
+        <h3><ListChecks size={16} /> Gate Status</h3>
+        <div className="gate-row">
+          {gateIds.map((gate) => (
+            <div className={`gate-chip gate-${detail.production.gates[gate]}`} key={gate}>
+              <strong>{gate}</strong>
+              <span>{detail.production.gates[gate]}</span>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <div className="manual-panel">
         <label className="check-row">

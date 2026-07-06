@@ -92,6 +92,49 @@ describe("ProductionInsightPanel", () => {
     expect(screen.getByText("json_parse_error")).toBeInTheDocument();
     expect(screen.getByText("Invalid JSON")).toBeInTheDocument();
   });
+  it("shows G0-G4 gate statuses for the selected production", () => {
+    render(
+      <ProductionInsightPanel
+        loading={false}
+        detail={{
+          production: {
+            id: "story::prod",
+            storyName: "story",
+            productionPath: "prod",
+            absolutePath: "D:\\prod",
+            detectionType: "manual",
+            gates: { G0: "missing", G1: "detected", G2: "partial", G3: "complete", G4: "approved" },
+            sceneCount: 0,
+            cutCount: 0,
+            storyboardSheetCount: 0,
+            videoPromptCount: 0,
+            generatedVideoCount: 0,
+            approvalCount: 0,
+            issueCount: 0,
+            lastContentMtime: null,
+            checked: false,
+            tags: []
+          },
+          manualNote: "",
+          scenes: [],
+          artifacts: [],
+          issues: []
+        }}
+      />
+    );
+
+    const gateStatus = screen.getByRole("region", { name: "Gate Status" });
+    expect(within(gateStatus).getByText("G0")).toBeInTheDocument();
+    expect(within(gateStatus).getByText("missing")).toBeInTheDocument();
+    expect(within(gateStatus).getByText("G1")).toBeInTheDocument();
+    expect(within(gateStatus).getByText("detected")).toBeInTheDocument();
+    expect(within(gateStatus).getByText("G2")).toBeInTheDocument();
+    expect(within(gateStatus).getByText("partial")).toBeInTheDocument();
+    expect(within(gateStatus).getByText("G3")).toBeInTheDocument();
+    expect(within(gateStatus).getByText("complete")).toBeInTheDocument();
+    expect(within(gateStatus).getByText("G4")).toBeInTheDocument();
+    expect(within(gateStatus).getByText("approved")).toBeInTheDocument();
+  });
   it("shows storyboard thumbnails, video prompts, and generated videos as production asset groups", () => {
     render(
       <ProductionInsightPanel
