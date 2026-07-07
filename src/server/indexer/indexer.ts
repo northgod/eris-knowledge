@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type Database from "better-sqlite3";
 import { createRepositories, stableId, type ArtifactUpsert, type ScanIssueUpsert } from "../db/repositories";
-import { classifyArtifact } from "../scanner/artifactClassifier";
+import { classifyArtifact, shouldIgnoreArtifact } from "../scanner/artifactClassifier";
 import { detectProductions, type DetectedProduction } from "../scanner/productionDetector";
 import { parseApprovalMarkdown } from "../parser/approvalParser";
 import { parseMarkdownEmbeddedArtifacts, parseMarkdownScenes } from "../parser/markdownParser";
@@ -92,7 +92,11 @@ async function resolveReferenceImage(root: string, production: DetectedProductio
     if (!isInsideRoot(root, candidate)) continue;
     try {
       const stat = await fs.stat(candidate);
-      if (stat.isFile()) return path.resolve(candidate);
+      if (stat.isFile()) {
+        const relativePath = rootRelativePath(root, candidate);
+        if (shouldIgnoreArtifact(relativePath)) continue;
+        return path.resolve(candidate);
+      }
     } catch {
       // Missing references remain visible as text in the UI.
     }
@@ -150,8 +154,9 @@ export async function indexRoot(input: IndexRootInput): Promise<void> {
   const scanIssues: ScanIssueUpsert[] = [];
 
   for (const production of productions) {
+    const productionFiles = production.files.filter((file) => !shouldIgnoreArtifact(file));
     const artifacts = await Promise.all(
-      production.files.map((file) => artifactFromPath(input.root, production.id, file))
+      productionFiles.map((file) => artifactFromPath(input.root, production.id, file))
     );
     const sourceArtifacts = [...artifacts];
     const lastMtime = artifacts.map((artifact) => artifact.mtime).sort().at(-1) ?? null;

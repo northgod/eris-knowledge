@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyArtifact } from "../../src/server/scanner/artifactClassifier";
+import { classifyArtifact, shouldIgnoreArtifact } from "../../src/server/scanner/artifactClassifier";
 import { inferGateStatuses } from "../../src/server/scanner/progress";
 
 describe("artifact classification", () => {
@@ -36,5 +36,12 @@ describe("artifact classification", () => {
       G3: "detected",
       G4: "missing"
     });
+  });
+
+  it("marks images under .bak folders as ignored rejected assets", () => {
+    expect(shouldIgnoreArtifact("EP2/01b/storyboard_sheets/.bak/scene_001.png")).toBe(true);
+    expect(shouldIgnoreArtifact("EP2/01b/.bak/visual_art/concept.webp")).toBe(true);
+    expect(shouldIgnoreArtifact("EP2/01b/storyboard_sheets/scene_001.png")).toBe(false);
+    expect(shouldIgnoreArtifact("EP2/01b/.bak/notes.md")).toBe(false);
   });
 });

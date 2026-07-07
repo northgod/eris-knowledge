@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { DetectionType } from "../../shared/types";
+import { shouldIgnoreArtifact } from "./artifactClassifier";
 import { walkFiles } from "./fileWalker";
 
 export interface DetectedProduction {
@@ -90,10 +91,12 @@ export async function detectProductions(root: string): Promise<DetectedProductio
   >();
 
   for (const file of files) {
-    const parsed = productionRootFor(file.relativePath);
+    const normalizedFile = normalizeSeparators(file.relativePath);
+    if (shouldIgnoreArtifact(normalizedFile)) continue;
+
+    const parsed = productionRootFor(normalizedFile);
     if (!parsed) continue;
     const productionId = `${parsed.storyName}::${parsed.productionPath}`;
-    const normalizedFile = normalizeSeparators(file.relativePath);
     const existing = byProduction.get(productionId) ?? { ...parsed, files: [] };
     existing.files.push(normalizedFile);
     byProduction.set(productionId, existing);

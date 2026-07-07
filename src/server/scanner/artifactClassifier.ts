@@ -6,8 +6,20 @@ export interface ArtifactClassification {
   gate: GateId | null;
 }
 
+const ignoredBackupImageExtensions = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
+
+function normalizeArtifactPath(relativePath: string): string {
+  return relativePath.replaceAll("\\", "/");
+}
+
+export function shouldIgnoreArtifact(relativePath: string): boolean {
+  const normalized = normalizeArtifactPath(relativePath);
+  const ext = path.posix.extname(normalized).toLowerCase();
+  return ignoredBackupImageExtensions.has(ext) && normalized.split("/").some((part) => part.toLowerCase() === ".bak");
+}
+
 export function classifyArtifact(relativePath: string): ArtifactClassification {
-  const normalized = relativePath.replaceAll("\\", "/");
+  const normalized = normalizeArtifactPath(relativePath);
   const file = path.posix.basename(normalized);
   const ext = path.posix.extname(normalized).toLowerCase();
 

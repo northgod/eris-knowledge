@@ -187,4 +187,41 @@ CUT 1 [00:00-00:02] WIDE:
       }
     }
   });
+
+  it("ignores rejected images under .bak folders when indexing artifacts and references", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "eris-bak-assets-"));
+    const productionDir = path.join(root, "stories", "story", "02_Anime", "storyboards", "prod");
+    fs.mkdirSync(path.join(productionDir, "storyboard_sheets", ".bak"), { recursive: true });
+    fs.mkdirSync(path.join(productionDir, ".bak"), { recursive: true });
+    fs.writeFileSync(path.join(productionDir, "storyboard_sheets", ".bak", "scene_001.png"), "rejected storyboard");
+    fs.writeFileSync(path.join(productionDir, ".bak", "stage_sketch_scene.png"), "rejected sketch");
+    fs.writeFileSync(
+      path.join(productionDir, "02_テキストコンテ.md"),
+      `## シーン 001
+- 内容: Hero arrives.
+- stage_sketch: .bak/stage_sketch_scene.png
+`,
+      "utf8"
+    );
+
+    const db = new Database(":memory:");
+    migrate(db);
+
+    try {
+      await indexRoot({ db, root, scanRootLabel: "temp" });
+
+      const detail = createRepositories(db).api.productionDetail("story::prod");
+      const artifacts = detail?.artifacts ?? [];
+      const artifactPaths = artifacts.map((artifact) => artifact.relativePath);
+
+      expect(artifactPaths).not.toContain("stories/story/02_Anime/storyboards/prod/storyboard_sheets/.bak/scene_001.png");
+      expect(artifactPaths).not.toContain("stories/story/02_Anime/storyboards/prod/.bak/stage_sketch_scene.png");
+      expect(detail?.production.storyboardSheetCount).toBe(0);
+      expect(detail?.production.gates.G2).toBe("missing");
+    } finally {
+      if (root.startsWith(os.tmpdir())) {
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    }
+  });
 });
