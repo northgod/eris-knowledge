@@ -6,6 +6,16 @@ import type {
   ScanRunRecord
 } from "../shared/types";
 
+export class ScanRequestError extends Error {
+  scan: ScanRunRecord | null;
+
+  constructor(message: string, scan: ScanRunRecord | null) {
+    super(message);
+    this.name = "ScanRequestError";
+    this.scan = scan;
+  }
+}
+
 export async function fetchProductions(): Promise<ProductionSummary[]> {
   const response = await fetch("/api/productions");
   if (!response.ok) throw new Error(`Failed to fetch productions: ${response.status}`);
@@ -38,14 +48,23 @@ export async function fetchLatestScan(): Promise<ScanRunRecord | null> {
   const response = await fetch("/api/scans/latest");
   if (!response.ok) throw new Error(`Failed to fetch latest scan: ${response.status}`);
   const data = (await response.json()) as { scan: ScanRunRecord | null };
-  return data.scan;
+  return data.scan ?? null;
+}
+
+export async function fetchScanRuns(): Promise<ScanRunRecord[]> {
+  const response = await fetch("/api/scans");
+  if (!response.ok) throw new Error(`Failed to fetch scan runs: ${response.status}`);
+  const data = (await response.json()) as { scans: ScanRunRecord[] };
+  return data.scans;
 }
 
 export async function runScan(): Promise<ScanRunRecord | null> {
   const response = await fetch("/api/scans", { method: "POST" });
-  if (!response.ok) throw new Error(`Failed to run scan: ${response.status}`);
-  const data = (await response.json()) as { scan: ScanRunRecord | null };
-  return data.scan;
+  const data = (await response.json()) as { scan?: ScanRunRecord | null; error?: string };
+  if (!response.ok) {
+    throw new ScanRequestError(`Failed to run scan: ${response.status}`, data.scan ?? null);
+  }
+  return data.scan ?? null;
 }
 
 export async function saveManualNote(targetType: string, targetId: string, note: string): Promise<void> {

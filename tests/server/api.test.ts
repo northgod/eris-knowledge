@@ -111,6 +111,63 @@ describe("API", () => {
     });
   });
 
+  it("returns scan run history in newest-first order", async () => {
+    const db = new Database(":memory:");
+    migrate(db);
+    const repos = createRepositories(db);
+    repos.scanRuns.start({
+      id: "scan-old",
+      startedAt: "2026-07-06T09:00:00.000Z",
+      rootPath: "D:\\Scarlet"
+    });
+    repos.scanRuns.finish({
+      id: "scan-old",
+      finishedAt: "2026-07-06T09:00:05.000Z",
+      status: "success",
+      errorMessage: null
+    });
+    repos.scanRuns.start({
+      id: "scan-new",
+      startedAt: "2026-07-07T09:00:00.000Z",
+      rootPath: "D:\\Scarlet"
+    });
+    repos.scanRuns.finish({
+      id: "scan-new",
+      finishedAt: "2026-07-07T09:00:02.000Z",
+      status: "error",
+      errorMessage: "Missing root"
+    });
+
+    const app = createApp({ db, scarletRoot: "D:\\Scarlet" });
+
+    await request(app).get("/api/scans").expect(200).expect((res) => {
+      expect(res.body.scans).toMatchObject([
+        { id: "scan-new", status: "error", errorMessage: "Missing root" },
+        { id: "scan-old", status: "success", errorMessage: null }
+      ]);
+    });
+  });
+
+  it("returns the failed scan run when scanning fails", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "eris-missing-scan-"));
+    const missingRoot = path.join(tempDir, "missing-root");
+    const db = new Database(":memory:");
+    migrate(db);
+    const app = createApp({ db, scarletRoot: missingRoot });
+
+    await request(app)
+      .post("/api/scans")
+      .expect(500)
+      .expect((res) => {
+        expect(res.body.ok).toBe(false);
+        expect(res.body.scan).toMatchObject({
+          rootPath: missingRoot,
+          status: "error"
+        });
+        expect(res.body.scan.errorMessage).toEqual(expect.any(String));
+      });
+  });
+
   it("returns expanded needs attention reasons", async () => {
     const db = new Database(":memory:");
     migrate(db);
@@ -198,10 +255,10 @@ describe("API", () => {
       const noCuts = res.body.items.find((item: { id: string }) => item.id === "story::no-cuts");
       const scanIssue = res.body.items.find((item: { id: string }) => item.id === "story::scan-issue");
       expect(noCuts.attentionReasons).toEqual(
-        expect.arrayContaining([expect.objectContaining({ label: "No cuts parsed" })])
+        expect.arrayContaining([expect.objectContaining({ label: "カット未解析" })])
       );
       expect(scanIssue.attentionReasons).toEqual(
-        expect.arrayContaining([expect.objectContaining({ label: "Scan issues" })])
+        expect.arrayContaining([expect.objectContaining({ label: "スキャン問題" })])
       );
     });
   });

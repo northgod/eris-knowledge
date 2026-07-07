@@ -15,35 +15,35 @@ export function getAttentionReasons(production: ProductionSummary): AttentionRea
   const hasDownstreamAssets = hasStoryboard || hasVideoPrompt || hasGeneratedVideo;
 
   if (!hasTextStoryboard && hasDownstreamAssets) {
-    reasons.push(reason("text_storyboard_missing", "Text storyboard missing"));
+    reasons.push(reason("text_storyboard_missing", "テキストコンテ未検出"));
   }
 
   if (hasTextStoryboard && !hasStoryboard) {
-    reasons.push(reason("storyboard_missing", "Storyboard missing"));
+    reasons.push(reason("storyboard_missing", "絵コンテ未検出"));
   }
 
   if (hasTextStoryboard && !hasVideoPrompt) {
-    reasons.push(reason("video_prompt_missing", "Video prompt missing"));
+    reasons.push(reason("video_prompt_missing", "動画プロンプト未検出"));
   }
 
   if (hasTextStoryboard && production.sceneCount === 0) {
-    reasons.push(reason("scene_parse_missing", "No scenes parsed"));
+    reasons.push(reason("scene_parse_missing", "シーン未解析"));
   }
 
   if (production.sceneCount > 0 && production.cutCount === 0) {
-    reasons.push(reason("cut_parse_missing", "No cuts parsed"));
+    reasons.push(reason("cut_parse_missing", "カット未解析"));
   }
 
   if (production.sceneCount > 0 && production.videoPromptCount > 0 && production.videoPromptCount < production.sceneCount) {
-    reasons.push(reason("prompt_coverage_low", "Fewer prompts than scenes"));
+    reasons.push(reason("prompt_coverage_low", "動画プロンプト不足"));
   }
 
   if (hasVideoPrompt && !hasGeneratedVideo) {
-    reasons.push(reason("generated_video_missing", "Generated video not indexed"));
+    reasons.push(reason("generated_video_missing", "生成動画未検出"));
   }
 
   if (production.issueCount > 0) {
-    reasons.push(reason("scan_issues", "Scan issues"));
+    reasons.push(reason("scan_issues", "スキャン問題"));
   }
 
   return reasons;

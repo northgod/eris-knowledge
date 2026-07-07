@@ -1,4 +1,4 @@
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, History, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import type {
   ArtifactRecord,
@@ -12,6 +12,7 @@ import {
   fetchAssetPreview,
   fetchAssets,
   fetchLatestScan,
+  fetchScanRuns,
   fetchProductionDetail,
   fetchProductions,
   runScan,
@@ -23,12 +24,14 @@ import { Dashboard } from "./components/Dashboard";
 import { NeedsAttention } from "./components/NeedsAttention";
 import { ProductionInsightPanel } from "./components/ProductionInsightPanel";
 import { ProductionList } from "./components/ProductionList";
+import { ScanHistory } from "./components/ScanHistory";
 
 function appendUniqueTag(tags: string[], tag: string): string[] {
   return tags.includes(tag) ? tags : [...tags, tag];
 }
 
 const productionRoutePrefix = "/productions/";
+const scanHistoryRoute = "/scans";
 
 function productionRoute(productionId: string): string {
   return `${productionRoutePrefix}${encodeURIComponent(productionId)}`;
@@ -64,35 +67,50 @@ function scanTimeLabel(scan: ScanRunRecord): string {
   });
 }
 
+function scanFromError(error: unknown): ScanRunRecord | null {
+  if (!error || typeof error !== "object" || !("scan" in error)) return null;
+  const scan = (error as { scan?: unknown }).scan;
+  if (!scan || typeof scan !== "object") return null;
+  return scan as ScanRunRecord;
+}
+
+function prependScan(scans: ScanRunRecord[], scan: ScanRunRecord): ScanRunRecord[] {
+  return [scan, ...scans.filter((item) => item.id !== scan.id)];
+}
+
 export function App() {
   const [productions, setProductions] = useState<ProductionSummary[]>([]);
   const [assets, setAssets] = useState<ArtifactRecord[]>([]);
   const [latestScan, setLatestScan] = useState<ScanRunRecord | null | undefined>(undefined);
+  const [scanRuns, setScanRuns] = useState<ScanRunRecord[]>([]);
   const [selectedProductionId, setSelectedProductionId] = useState<string | null>(null);
   const [routeProductionId, setRouteProductionId] = useState<string | null>(() =>
     productionIdFromPath(window.location.pathname)
   );
+  const [isScanRoute, setIsScanRoute] = useState(() => window.location.pathname === scanHistoryRoute);
   const [selectedDetail, setSelectedDetail] = useState<ProductionDetailPayload | null>(null);
   const [selectedAssetPreview, setSelectedAssetPreview] = useState<AssetPreviewPayload | null>(null);
   const [assetPreviewLoading, setAssetPreviewLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const activeProductionId = routeProductionId ?? selectedProductionId;
-  const isDetailRoute = routeProductionId !== null;
+  const activeProductionId = isScanRoute ? null : routeProductionId ?? selectedProductionId;
+  const isDetailRoute = !isScanRoute && routeProductionId !== null;
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      const [nextProductions, nextAssets, nextLatestScan] = await Promise.all([
+      const [nextProductions, nextAssets, nextLatestScan, nextScanRuns] = await Promise.all([
         fetchProductions(),
         fetchAssets(),
-        fetchLatestScan()
+        fetchLatestScan(),
+        fetchScanRuns()
       ]);
       setProductions(nextProductions);
       setAssets(nextAssets);
       setLatestScan(nextLatestScan);
+      setScanRuns(nextScanRuns);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -105,12 +123,22 @@ export function App() {
     setError(null);
     try {
       const scan = await runScan();
-      const [nextProductions, nextAssets] = await Promise.all([fetchProductions(), fetchAssets()]);
+      const [nextProductions, nextAssets, nextScanRuns] = await Promise.all([
+        fetchProductions(),
+        fetchAssets(),
+        fetchScanRuns()
+      ]);
       setProductions(nextProductions);
       setAssets(nextAssets);
-      setLatestScan(scan);
+      setLatestScan(scan ?? nextScanRuns[0] ?? null);
+      setScanRuns(nextScanRuns);
       setSelectedAssetPreview(null);
     } catch (err) {
+      const failedScan = scanFromError(err);
+      if (failedScan) {
+        setLatestScan(failedScan);
+        setScanRuns((current) => prependScan(current, failedScan));
+      }
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
@@ -188,6 +216,7 @@ export function App() {
 
   function navigateToProduction(productionId: string) {
     setSelectedProductionId(productionId);
+    setIsScanRoute(false);
     setRouteProductionId(productionId);
     const nextPath = productionRoute(productionId);
     if (window.location.pathname !== nextPath) {
@@ -196,9 +225,18 @@ export function App() {
   }
 
   function navigateToDashboard() {
+    setIsScanRoute(false);
     setRouteProductionId(null);
     if (window.location.pathname !== "/") {
       window.history.pushState(null, "", "/");
+    }
+  }
+
+  function navigateToScanHistory() {
+    setIsScanRoute(true);
+    setRouteProductionId(null);
+    if (window.location.pathname !== scanHistoryRoute) {
+      window.history.pushState(null, "", scanHistoryRoute);
     }
   }
 
@@ -208,7 +246,9 @@ export function App() {
 
   useEffect(() => {
     function handlePopState() {
-      setRouteProductionId(productionIdFromPath(window.location.pathname));
+      const nextIsScanRoute = window.location.pathname === scanHistoryRoute;
+      setIsScanRoute(nextIsScanRoute);
+      setRouteProductionId(nextIsScanRoute ? null : productionIdFromPath(window.location.pathname));
     }
 
     window.addEventListener("popstate", handlePopState);
@@ -273,6 +313,7 @@ export function App() {
                   <strong>{latestScan.status}</strong>
                   <time dateTime={latestScan.finishedAt ?? latestScan.startedAt}>{scanTimeLabel(latestScan)}</time>
                   <code>{latestScan.rootPath}</code>
+                  {latestScan.errorMessage && <em>{latestScan.errorMessage}</em>}
                 </>
               ) : (
                 <strong>not run</strong>
@@ -283,11 +324,23 @@ export function App() {
             <RefreshCw size={18} />
             Scan
           </button>
+          <button className="secondary-button topbar-history-button" onClick={navigateToScanHistory} aria-label="Show scan history">
+            <History size={16} />
+            History
+          </button>
         </div>
       </header>
       {error && <div className="error-banner">{error}</div>}
       {loading ? (
         <div className="loading">Loading</div>
+      ) : isScanRoute ? (
+        <section className="scan-history-screen">
+          <button className="secondary-button dashboard-back-button" type="button" onClick={navigateToDashboard}>
+            <ArrowLeft size={16} />
+            Back to Dashboard
+          </button>
+          <ScanHistory scans={scanRuns} />
+        </section>
       ) : isDetailRoute ? (
         <section className="production-detail-screen" aria-label="Selected Production Detail">
           <button className="secondary-button dashboard-back-button" type="button" onClick={navigateToDashboard}>

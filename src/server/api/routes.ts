@@ -82,7 +82,11 @@ export function createRoutes(context: RouteContext): Router {
     res.json({ scan: repos.scanRuns.latest() });
   });
 
-  router.post("/scans", async (_req, res, next) => {
+  router.get("/scans", (_req, res) => {
+    res.json({ scans: repos.scanRuns.list() });
+  });
+
+  router.post("/scans", async (_req, res) => {
     const scanId = randomUUID();
     repos.scanRuns.start({
       id: scanId,
@@ -106,7 +110,7 @@ export function createRoutes(context: RouteContext): Router {
         status: "error",
         errorMessage: errorMessage(error)
       });
-      next(error);
+      res.status(500).json({ ok: false, scan: repos.scanRuns.latest(), error: errorMessage(error) });
     }
   });
 

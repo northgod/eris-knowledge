@@ -219,6 +219,20 @@ export function createRepositories(db: Database.Database) {
           LIMIT 1
         `).get() as ScanRunRecord | undefined;
         return row ?? null;
+      },
+      list(limit = 50): ScanRunRecord[] {
+        return db.prepare(`
+          SELECT
+            id,
+            started_at AS startedAt,
+            finished_at AS finishedAt,
+            root_path AS rootPath,
+            status,
+            error_message AS errorMessage
+          FROM scan_runs
+          ORDER BY started_at DESC, id DESC
+          LIMIT ?
+        `).all(limit) as ScanRunRecord[];
       }
     },
     productions: {

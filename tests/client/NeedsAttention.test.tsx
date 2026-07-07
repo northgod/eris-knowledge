@@ -80,10 +80,10 @@ describe("NeedsAttention", () => {
     );
 
     expect(screen.getByText("story / no-cuts")).toBeInTheDocument();
-    expect(screen.getByText("No cuts parsed")).toBeInTheDocument();
-    expect(screen.getByText("Generated video not indexed")).toBeInTheDocument();
+    expect(screen.getByText("カット未解析")).toBeInTheDocument();
+    expect(screen.getByText("生成動画未検出")).toBeInTheDocument();
     expect(screen.getByText("story / scan-issue")).toBeInTheDocument();
-    expect(screen.getByText("Scan issues")).toBeInTheDocument();
+    expect(screen.getByText("スキャン問題")).toBeInTheDocument();
     expect(screen.queryByText("story / complete")).not.toBeInTheDocument();
   });
 });
