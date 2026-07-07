@@ -29,6 +29,37 @@ const looseProduction: ProductionSummary = {
   detectionType: "loose"
 };
 
+const parsedButNoCutsProduction: ProductionSummary = {
+  ...attentionProduction,
+  id: "story::no-cuts",
+  productionPath: "no-cuts",
+  gates: { G0: "missing", G1: "detected", G2: "detected", G3: "detected", G4: "missing" },
+  sceneCount: 2,
+  cutCount: 0,
+  storyboardSheetCount: 2,
+  videoPromptCount: 2
+};
+
+const issueProduction: ProductionSummary = {
+  ...attentionProduction,
+  id: "story::scan-issue",
+  productionPath: "scan-issue",
+  gates: { G0: "missing", G1: "detected", G2: "detected", G3: "detected", G4: "detected" },
+  sceneCount: 2,
+  cutCount: 2,
+  storyboardSheetCount: 2,
+  videoPromptCount: 2,
+  generatedVideoCount: 2,
+  issueCount: 1
+};
+
+const completeProduction: ProductionSummary = {
+  ...issueProduction,
+  id: "story::complete",
+  productionPath: "complete",
+  issueCount: 0
+};
+
 describe("NeedsAttention", () => {
   it("selects a production from the attention list", () => {
     const onSelect = vi.fn();
@@ -38,5 +69,21 @@ describe("NeedsAttention", () => {
 
     expect(onSelect).toHaveBeenCalledWith("story::needs-attention");
     expect(screen.queryByText("story / loose")).not.toBeInTheDocument();
+  });
+
+  it("shows expanded attention reasons and hides complete productions", () => {
+    render(
+      <NeedsAttention
+        productions={[parsedButNoCutsProduction, issueProduction, completeProduction]}
+        onSelect={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("story / no-cuts")).toBeInTheDocument();
+    expect(screen.getByText("No cuts parsed")).toBeInTheDocument();
+    expect(screen.getByText("Generated video not indexed")).toBeInTheDocument();
+    expect(screen.getByText("story / scan-issue")).toBeInTheDocument();
+    expect(screen.getByText("Scan issues")).toBeInTheDocument();
+    expect(screen.queryByText("story / complete")).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,5 @@
 import { AlertTriangle, CheckCircle2, Database, Layers } from "lucide-react";
+import { needsAttention as productionNeedsAttention } from "../../shared/attention";
 import type { ProductionSummary } from "../../shared/types";
 
 interface DashboardProps {
@@ -6,11 +7,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({ productions }: DashboardProps) {
-  const needsAttention = productions.filter(
-    (production) =>
-      production.gates.G1 === "detected" &&
-      (production.gates.G2 === "missing" || production.gates.G3 === "missing")
-  ).length;
+  const needsAttention = productions.filter(productionNeedsAttention).length;
   const checked = productions.filter((production) => production.checked).length;
 
   return (

@@ -1,10 +1,17 @@
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { ArtifactRecord, AssetPreviewPayload, ProductionDetailPayload, ProductionSummary } from "../shared/types";
+import type {
+  ArtifactRecord,
+  AssetPreviewPayload,
+  ProductionDetailPayload,
+  ProductionSummary,
+  ScanRunRecord
+} from "../shared/types";
 import {
   addProductionTag,
   fetchAssetPreview,
   fetchAssets,
+  fetchLatestScan,
   fetchProductionDetail,
   fetchProductions,
   runScan,
@@ -44,9 +51,23 @@ function productionIdFromPath(pathname: string): string | null {
   }
 }
 
+function scanTimeLabel(scan: ScanRunRecord): string {
+  const timestamp = scan.finishedAt ?? scan.startedAt;
+  return new Date(timestamp).toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+}
+
 export function App() {
   const [productions, setProductions] = useState<ProductionSummary[]>([]);
   const [assets, setAssets] = useState<ArtifactRecord[]>([]);
+  const [latestScan, setLatestScan] = useState<ScanRunRecord | null | undefined>(undefined);
   const [selectedProductionId, setSelectedProductionId] = useState<string | null>(null);
   const [routeProductionId, setRouteProductionId] = useState<string | null>(() =>
     productionIdFromPath(window.location.pathname)
@@ -64,9 +85,14 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      const [nextProductions, nextAssets] = await Promise.all([fetchProductions(), fetchAssets()]);
+      const [nextProductions, nextAssets, nextLatestScan] = await Promise.all([
+        fetchProductions(),
+        fetchAssets(),
+        fetchLatestScan()
+      ]);
       setProductions(nextProductions);
       setAssets(nextAssets);
+      setLatestScan(nextLatestScan);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -78,10 +104,11 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      await runScan();
+      const scan = await runScan();
       const [nextProductions, nextAssets] = await Promise.all([fetchProductions(), fetchAssets()]);
       setProductions(nextProductions);
       setAssets(nextAssets);
+      setLatestScan(scan);
       setSelectedAssetPreview(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -237,10 +264,26 @@ export function App() {
           <h1>eris-knowledge</h1>
           <p>Read-only production knowledge for ScarletEchoes</p>
         </div>
-        <button className="icon-button" onClick={scanAndReload} aria-label="Run scan">
-          <RefreshCw size={18} />
-          Scan
-        </button>
+        <div className="topbar-actions">
+          {latestScan !== undefined && (
+            <div className={`scan-status scan-status-${latestScan?.status ?? "empty"}`} aria-label="Latest scan">
+              <span>Latest scan</span>
+              {latestScan ? (
+                <>
+                  <strong>{latestScan.status}</strong>
+                  <time dateTime={latestScan.finishedAt ?? latestScan.startedAt}>{scanTimeLabel(latestScan)}</time>
+                  <code>{latestScan.rootPath}</code>
+                </>
+              ) : (
+                <strong>not run</strong>
+              )}
+            </div>
+          )}
+          <button className="icon-button" onClick={scanAndReload} aria-label="Run scan">
+            <RefreshCw size={18} />
+            Scan
+          </button>
+        </div>
       </header>
       {error && <div className="error-banner">{error}</div>}
       {loading ? (

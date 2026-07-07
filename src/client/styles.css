@@ -38,6 +38,54 @@ body {
   margin: 4px 0 0;
 }
 
+.topbar-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+}
+
+.scan-status {
+  background: white;
+  border: 1px solid #d9e1e5;
+  border-radius: 8px;
+  display: grid;
+  gap: 2px;
+  max-width: min(460px, 40vw);
+  min-width: 220px;
+  padding: 8px 10px;
+}
+
+.scan-status span {
+  color: #63717a;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.scan-status strong {
+  color: #1d3844;
+  font-size: 13px;
+}
+
+.scan-status time,
+.scan-status code {
+  color: #63717a;
+  font-size: 12px;
+}
+
+.scan-status code {
+  overflow-wrap: anywhere;
+}
+
+.scan-status-success {
+  border-color: #b9dfbd;
+}
+
+.scan-status-error {
+  border-color: #f0b9ad;
+}
+
 .icon-button {
   align-items: center;
   background: #16232b;
@@ -329,6 +377,17 @@ body {
   .topbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .topbar-actions {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .scan-status {
+    max-width: none;
+    min-width: 0;
   }
 
   .dashboard-grid,
@@ -1024,6 +1083,24 @@ body {
 
 .attention-detail-button {
   flex: 0 0 auto;
+}
+
+.attention-reason-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.attention-reason-list span {
+  background: #fff7e8;
+  border: 1px solid #efd39d;
+  border-radius: 999px;
+  color: #6a4d20;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 5px 8px;
 }
 
 @media (max-width: 560px) {

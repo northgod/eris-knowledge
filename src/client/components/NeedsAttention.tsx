@@ -1,5 +1,6 @@
 import { AlertTriangle, Eye } from "lucide-react";
-import type { ProductionSummary } from "../../shared/types";
+import { toNeedsAttentionItem } from "../../shared/attention";
+import type { NeedsAttentionItem, ProductionSummary } from "../../shared/types";
 
 interface NeedsAttentionProps {
   productions: ProductionSummary[];
@@ -8,18 +9,15 @@ interface NeedsAttentionProps {
 }
 
 export function NeedsAttention({ productions, selectedProductionId = null, onSelect }: NeedsAttentionProps) {
-  const items = productions.filter(
-    (production) =>
-      production.detectionType !== "loose" &&
-      production.gates.G1 === "detected" &&
-      (production.gates.G2 === "missing" || production.gates.G3 === "missing")
-  );
+  const items = productions
+    .map(toNeedsAttentionItem)
+    .filter((item): item is NeedsAttentionItem => item !== null);
 
   return (
     <section className="attention-section">
       <h2><AlertTriangle size={18} /> Needs Attention</h2>
       {items.length === 0 ? (
-        <p className="quiet-text">No production currently matches the initial attention rules.</p>
+        <p className="quiet-text">No production currently needs attention.</p>
       ) : (
         <ul className="attention-list">
           {items.map((item) => {
@@ -29,7 +27,12 @@ export function NeedsAttention({ productions, selectedProductionId = null, onSel
               <li className={selected ? "is-selected" : undefined} key={item.id}>
                 <div>
                   <strong>{title}</strong>
-                  <span>G2: {item.gates.G2}, G3: {item.gates.G3}</span>
+                  <span>{item.sceneCount} scenes / {item.cutCount} cuts</span>
+                  <div className="attention-reason-list" aria-label={`Attention reasons for ${title}`}>
+                    {item.attentionReasons.map((attentionReason) => (
+                      <span key={attentionReason.code}>{attentionReason.label}</span>
+                    ))}
+                  </div>
                 </div>
                 {onSelect && (
                   <button

@@ -21,6 +21,15 @@ export function migrate(db: Database.Database): void {
       last_content_mtime TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS scan_runs (
+      id TEXT PRIMARY KEY,
+      started_at TEXT NOT NULL,
+      finished_at TEXT,
+      root_path TEXT NOT NULL,
+      status TEXT NOT NULL,
+      error_message TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS artifacts (
       id TEXT PRIMARY KEY,
       production_id TEXT NOT NULL,

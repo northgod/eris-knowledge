@@ -1,8 +1,10 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type Database from "better-sqlite3";
 import { Router } from "express";
-import type { ArtifactRecord, AssetPreviewPayload } from "../../shared/types";
+import { toNeedsAttentionItem } from "../../shared/attention";
+import type { ArtifactRecord, AssetPreviewPayload, NeedsAttentionItem } from "../../shared/types";
 import { createRepositories } from "../db/repositories";
 import { indexRoot } from "../indexer/indexer";
 
@@ -40,6 +42,10 @@ function isImageAsset(asset: ArtifactRecord): boolean {
   return IMAGE_EXTENSIONS.has(asset.extension.toLowerCase()) || asset.kind === "storyboard_sheet" || asset.kind === "image";
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 async function createAssetPreview(asset: ArtifactRecord): Promise<AssetPreviewPayload> {
   const base = {
     id: asset.id,
@@ -72,11 +78,34 @@ export function createRoutes(context: RouteContext): Router {
     res.json({ ok: true, scarletRoot: context.scarletRoot });
   });
 
+  router.get("/scans/latest", (_req, res) => {
+    res.json({ scan: repos.scanRuns.latest() });
+  });
+
   router.post("/scans", async (_req, res, next) => {
+    const scanId = randomUUID();
+    repos.scanRuns.start({
+      id: scanId,
+      startedAt: new Date().toISOString(),
+      rootPath: context.scarletRoot
+    });
+
     try {
-      await indexRoot({ db: context.db, root: context.scarletRoot, scanRootLabel: "ScarletEchoes" });
-      res.json({ ok: true });
+      await indexRoot({ db: context.db, root: context.scarletRoot, scanRootLabel: scanId });
+      repos.scanRuns.finish({
+        id: scanId,
+        finishedAt: new Date().toISOString(),
+        status: "success",
+        errorMessage: null
+      });
+      res.json({ ok: true, scan: repos.scanRuns.latest() });
     } catch (error) {
+      repos.scanRuns.finish({
+        id: scanId,
+        finishedAt: new Date().toISOString(),
+        status: "error",
+        errorMessage: errorMessage(error)
+      });
       next(error);
     }
   });
@@ -137,12 +166,9 @@ export function createRoutes(context: RouteContext): Router {
 
   router.get("/needs-attention", (_req, res) => {
     const productions = repos.productions.listForApi();
-    const items = productions.filter(
-      (production) =>
-        production.detectionType !== "loose" &&
-        production.gates.G1 === "detected" &&
-        (production.gates.G2 === "missing" || production.gates.G3 === "missing")
-    );
+    const items = productions
+      .map(toNeedsAttentionItem)
+      .filter((item): item is NeedsAttentionItem => item !== null);
     res.json({ items });
   });
 

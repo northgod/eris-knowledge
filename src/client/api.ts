@@ -1,4 +1,10 @@
-import type { ArtifactRecord, AssetPreviewPayload, ProductionDetailPayload, ProductionSummary } from "../shared/types";
+import type {
+  ArtifactRecord,
+  AssetPreviewPayload,
+  ProductionDetailPayload,
+  ProductionSummary,
+  ScanRunRecord
+} from "../shared/types";
 
 export async function fetchProductions(): Promise<ProductionSummary[]> {
   const response = await fetch("/api/productions");
@@ -28,9 +34,18 @@ export async function fetchProductionDetail(productionId: string): Promise<Produ
   return data.detail;
 }
 
-export async function runScan(): Promise<void> {
+export async function fetchLatestScan(): Promise<ScanRunRecord | null> {
+  const response = await fetch("/api/scans/latest");
+  if (!response.ok) throw new Error(`Failed to fetch latest scan: ${response.status}`);
+  const data = (await response.json()) as { scan: ScanRunRecord | null };
+  return data.scan;
+}
+
+export async function runScan(): Promise<ScanRunRecord | null> {
   const response = await fetch("/api/scans", { method: "POST" });
   if (!response.ok) throw new Error(`Failed to run scan: ${response.status}`);
+  const data = (await response.json()) as { scan: ScanRunRecord | null };
+  return data.scan;
 }
 
 export async function saveManualNote(targetType: string, targetId: string, note: string): Promise<void> {

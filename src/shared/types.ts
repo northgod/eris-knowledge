@@ -51,6 +51,36 @@ export interface ProductionSummary {
   tags: string[];
 }
 
+export type ScanRunStatus = "running" | "success" | "error";
+
+export interface ScanRunRecord {
+  id: string;
+  startedAt: string;
+  finishedAt: string | null;
+  rootPath: string;
+  status: ScanRunStatus;
+  errorMessage: string | null;
+}
+
+export type AttentionReasonCode =
+  | "text_storyboard_missing"
+  | "storyboard_missing"
+  | "video_prompt_missing"
+  | "scene_parse_missing"
+  | "cut_parse_missing"
+  | "prompt_coverage_low"
+  | "generated_video_missing"
+  | "scan_issues";
+
+export interface AttentionReason {
+  code: AttentionReasonCode;
+  label: string;
+}
+
+export interface NeedsAttentionItem extends ProductionSummary {
+  attentionReasons: AttentionReason[];
+}
+
 export interface ArtifactRecord {
   id: string;
   productionId: string;

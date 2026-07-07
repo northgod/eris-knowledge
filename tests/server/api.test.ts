@@ -9,6 +9,33 @@ import { migrate } from "../../src/server/db/schema";
 import { createRepositories } from "../../src/server/db/repositories";
 
 describe("API", () => {
+  function upsertTestProduction(repos: ReturnType<typeof createRepositories>, productionPath: string) {
+    repos.productions.upsert({
+      id: `story::${productionPath}`,
+      storyName: "story",
+      productionPath,
+      absolutePath: `D:\\story\\${productionPath}`,
+      detectionType: "manual",
+      lastContentMtime: null
+    });
+  }
+
+  function artifact(productionPath: string, kind: string, gate: string | null, name: string) {
+    const productionId = `story::${productionPath}`;
+    return {
+      id: `${productionPath}-${name}`,
+      productionId,
+      kind,
+      gate,
+      relativePath: `stories/story/02_Anime/storyboards/${productionPath}/${name}`,
+      absolutePath: `D:\\story\\${productionPath}\\${name}`,
+      extension: path.extname(name) || ".md",
+      sizeBytes: 120,
+      mtime: "2026-07-06T00:00:00.000Z",
+      contentHash: null
+    };
+  }
+
   it("returns health and production list", async () => {
     const db = new Database(":memory:");
     migrate(db);
@@ -42,6 +69,140 @@ describe("API", () => {
         sceneCount: 0,
         cutCount: 0
       });
+    });
+  });
+
+  it("records and returns the latest scan run", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "eris-scan-"));
+    const productionDir = path.join(tempDir, "stories", "story", "02_Anime", "storyboards", "prod");
+    fs.mkdirSync(productionDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(productionDir, "02_テキストコンテ.md"),
+      "# Scene 001 Opening\n\n内容: Hero enters.\n\n## Cut 1 [00:00-00:01]\n画面: Door opens.\n",
+      "utf8"
+    );
+
+    const db = new Database(":memory:");
+    migrate(db);
+    const app = createApp({ db, scarletRoot: tempDir });
+    let scanId = "";
+
+    await request(app).get("/api/scans/latest").expect(200).expect((res) => {
+      expect(res.body.scan).toBeNull();
+    });
+
+    await request(app)
+      .post("/api/scans")
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.scan).toMatchObject({
+          rootPath: tempDir,
+          status: "success",
+          errorMessage: null
+        });
+        expect(res.body.scan.id).toEqual(expect.any(String));
+        expect(res.body.scan.startedAt).toEqual(expect.any(String));
+        expect(res.body.scan.finishedAt).toEqual(expect.any(String));
+        scanId = res.body.scan.id as string;
+      });
+
+    await request(app).get("/api/scans/latest").expect(200).expect((res) => {
+      expect(res.body.scan).toMatchObject({ id: scanId, rootPath: tempDir, status: "success" });
+    });
+  });
+
+  it("returns expanded needs attention reasons", async () => {
+    const db = new Database(":memory:");
+    migrate(db);
+    const repos = createRepositories(db);
+    for (const productionPath of ["missing-storyboard", "no-cuts", "scan-issue", "complete"]) {
+      upsertTestProduction(repos, productionPath);
+    }
+    repos.artifacts.replaceForProduction("story::missing-storyboard", [
+      artifact("missing-storyboard", "text_storyboard", "G1", "02_テキストコンテ.md")
+    ]);
+    repos.artifacts.replaceForProduction("story::no-cuts", [
+      artifact("no-cuts", "text_storyboard", "G1", "02_テキストコンテ.md"),
+      artifact("no-cuts", "storyboard_sheet", "G2", "storyboard_sheets/sheet_001.png"),
+      artifact("no-cuts", "video_prompt", "G3", "video_prompts/cut_001.json")
+    ]);
+    repos.scenes.replaceForProduction("story::no-cuts", [
+      {
+        id: "scene-no-cuts",
+        sourceArtifactId: "no-cuts-02_テキストコンテ.md",
+        sceneKey: "001",
+        title: "No cuts",
+        timeRange: "00:00-00:03",
+        durationSeconds: 3,
+        summary: "Parsed scene",
+        details: null,
+        lineNumber: 1,
+        cuts: []
+      }
+    ]);
+    repos.artifacts.replaceForProduction("story::scan-issue", [
+      artifact("scan-issue", "text_storyboard", "G1", "02_テキストコンテ.md"),
+      artifact("scan-issue", "storyboard_sheet", "G2", "storyboard_sheets/sheet_001.png"),
+      artifact("scan-issue", "video_prompt", "G3", "video_prompts/cut_001.json"),
+      artifact("scan-issue", "generated_video", "G4", "generated_videos/cut_001.mp4")
+    ]);
+    db.prepare(`
+      INSERT INTO scan_issues (id, scan_run_id, severity, relative_path, issue_code, message)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      "issue-1",
+      "scan-1",
+      "error",
+      "stories/story/02_Anime/storyboards/scan-issue/video_prompts/cut_001.json",
+      "json_parse_error",
+      "Invalid JSON"
+    );
+    repos.artifacts.replaceForProduction("story::complete", [
+      artifact("complete", "text_storyboard", "G1", "02_テキストコンテ.md"),
+      artifact("complete", "storyboard_sheet", "G2", "storyboard_sheets/sheet_001.png"),
+      artifact("complete", "video_prompt", "G3", "video_prompts/cut_001.json"),
+      artifact("complete", "generated_video", "G4", "generated_videos/cut_001.mp4")
+    ]);
+    repos.scenes.replaceForProduction("story::complete", [
+      {
+        id: "scene-complete",
+        sourceArtifactId: "complete-02_テキストコンテ.md",
+        sceneKey: "001",
+        title: "Complete",
+        timeRange: "00:00-00:03",
+        durationSeconds: 3,
+        summary: "Parsed scene",
+        details: null,
+        lineNumber: 1,
+        cuts: [
+          {
+            id: "cut-complete",
+            cutKey: "1",
+            timeRange: "00:00-00:01",
+            durationSeconds: 1,
+            cameraLabel: null,
+            summary: "Cut",
+            dialogue: null,
+            details: null,
+            lineNumber: 2
+          }
+        ]
+      }
+    ]);
+
+    const app = createApp({ db, scarletRoot: "D:\\Scarlet" });
+
+    await request(app).get("/api/needs-attention").expect(200).expect((res) => {
+      const ids = res.body.items.map((item: { id: string }) => item.id);
+      expect(ids).toEqual(["story::missing-storyboard", "story::no-cuts", "story::scan-issue"]);
+      const noCuts = res.body.items.find((item: { id: string }) => item.id === "story::no-cuts");
+      const scanIssue = res.body.items.find((item: { id: string }) => item.id === "story::scan-issue");
+      expect(noCuts.attentionReasons).toEqual(
+        expect.arrayContaining([expect.objectContaining({ label: "No cuts parsed" })])
+      );
+      expect(scanIssue.attentionReasons).toEqual(
+        expect.arrayContaining([expect.objectContaining({ label: "Scan issues" })])
+      );
     });
   });
 

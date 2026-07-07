@@ -9,6 +9,8 @@ import type {
   GateStatus,
   OrchestratorTaskRecord,
   ProductionDetailPayload,
+  ScanRunRecord,
+  ScanRunStatus,
   ScanIssueRecord,
   SceneRecord
 } from "../../shared/types";
@@ -65,6 +67,19 @@ export interface ScanIssueUpsert {
   relativePath: string;
   issueCode: string;
   message: string;
+}
+
+export interface ScanRunStart {
+  id: string;
+  startedAt: string;
+  rootPath: string;
+}
+
+export interface ScanRunFinish {
+  id: string;
+  finishedAt: string;
+  status: ScanRunStatus;
+  errorMessage: string | null;
 }
 
 export function stableId(input: string): string {
@@ -174,6 +189,38 @@ function listApprovals(db: Database.Database, productionId: string): ApprovalRec
 }
 export function createRepositories(db: Database.Database) {
   return {
+    scanRuns: {
+      start(input: ScanRunStart) {
+        db.prepare(`
+          INSERT INTO scan_runs (id, started_at, finished_at, root_path, status, error_message)
+          VALUES (@id, @startedAt, NULL, @rootPath, 'running', NULL)
+        `).run(input);
+      },
+      finish(input: ScanRunFinish) {
+        db.prepare(`
+          UPDATE scan_runs
+          SET finished_at = @finishedAt,
+              status = @status,
+              error_message = @errorMessage
+          WHERE id = @id
+        `).run(input);
+      },
+      latest(): ScanRunRecord | null {
+        const row = db.prepare(`
+          SELECT
+            id,
+            started_at AS startedAt,
+            finished_at AS finishedAt,
+            root_path AS rootPath,
+            status,
+            error_message AS errorMessage
+          FROM scan_runs
+          ORDER BY started_at DESC, id DESC
+          LIMIT 1
+        `).get() as ScanRunRecord | undefined;
+        return row ?? null;
+      }
+    },
     productions: {
       upsert(input: ProductionUpsert) {
         db.prepare(`
