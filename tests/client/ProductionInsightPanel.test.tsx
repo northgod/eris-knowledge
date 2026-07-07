@@ -325,6 +325,85 @@ describe("ProductionInsightPanel", () => {
       name: "stories/story/02_Anime/storyboards/EP2/01b/storyboard_sheets/EP2_01b_cut_sheet_10.png"
     })).not.toBeInTheDocument();
   });
+  it("moves standalone stage_sketch scene attributes into the storyboard panel", () => {
+    render(
+      <ProductionInsightPanel
+        loading={false}
+        detail={{
+          production: {
+            id: "story::prod",
+            storyName: "story",
+            productionPath: "prod",
+            absolutePath: "D:\\prod",
+            detectionType: "manual",
+            gates: { G0: "missing", G1: "detected", G2: "detected", G3: "missing", G4: "missing" },
+            sceneCount: 1,
+            cutCount: 0,
+            storyboardSheetCount: 0,
+            videoPromptCount: 0,
+            generatedVideoCount: 0,
+            approvalCount: 0,
+            issueCount: 0,
+            lastContentMtime: null,
+            checked: false,
+            tags: []
+          },
+          scenes: [
+            {
+              id: "scene-1",
+              productionId: "story::prod",
+              sourceArtifactId: "text-1",
+              sceneKey: "001",
+              title: "Opening",
+              timeRange: null,
+              durationSeconds: null,
+              summary: "Hero arrives",
+              details: "内容: Hero arrives\nstage_sketch: stage_sketch_scene_001.png\n場所、状態: Rooftop",
+              lineNumber: 3,
+              cuts: []
+            }
+          ],
+          manualNote: "",
+          issues: [],
+          artifacts: [
+            {
+              id: "text-1",
+              productionId: "story::prod",
+              kind: "text_storyboard",
+              gate: "G1",
+              relativePath: "stories/story/02_Anime/storyboards/prod/scene_001_text.md",
+              absolutePath: "D:\\prod\\scene_001_text.md",
+              extension: ".md",
+              sizeBytes: 120,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            },
+            {
+              id: "stage-sketch",
+              productionId: "story::prod",
+              kind: "stage_sketch",
+              gate: "G2",
+              relativePath: "stories/story/02_Anime/storyboards/prod/stage_sketch_scene_001.png",
+              absolutePath: "D:\\prod\\stage_sketch_scene_001.png",
+              extension: ".png",
+              sizeBytes: 180,
+              mtime: "2026-07-06T00:00:00.000Z",
+              contentHash: null
+            }
+          ]
+        }}
+      />
+    );
+
+    const sceneBoard = screen.getByRole("article", { name: "001 Opening" });
+    const sceneInfo = within(sceneBoard).getByRole("table", { name: "Scene information" });
+    expect(within(sceneInfo).queryByRole("cell", { name: "stage_sketch" })).not.toBeInTheDocument();
+
+    const storyboardPanel = within(sceneBoard).getByRole("region", { name: "絵コンテ" });
+    const stageSketchLink = within(storyboardPanel).getByRole("link", { name: "stage_sketch_scene_001.png" });
+    expect(stageSketchLink).toHaveAttribute("href", "/api/assets/stage-sketch/file");
+    expect(within(stageSketchLink).getByRole("img", { name: "stage_sketch_scene_001.png" })).toHaveClass("stage-sketch-original-image");
+  });
   it("shows G0-G4 gate statuses for the selected production", () => {
     render(
       <ProductionInsightPanel

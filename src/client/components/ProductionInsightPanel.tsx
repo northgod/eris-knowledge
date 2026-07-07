@@ -205,14 +205,15 @@ function sceneDisplaySections(scene: SceneWithCuts, assets: ArtifactRecord[]): S
       continue;
     }
 
-    if (inReferences) {
-      if (isStageSketchHeading(attribute.label)) {
-        currentReferenceGroup = "stage_sketch";
-        if (attribute.value) {
-          stageSketches.push(referenceItem({ title: attribute.label, value: attribute.value }, assets));
-        }
-        continue;
+    if (isStageSketchHeading(attribute.label)) {
+      currentReferenceGroup = "stage_sketch";
+      if (attribute.value) {
+        stageSketches.push(referenceItem({ title: attribute.label, value: attribute.value }, assets));
       }
+      continue;
+    }
+
+    if (inReferences) {
       if (currentReferenceGroup === "stage_sketch" && looksLikeReferenceValue(attribute.value)) {
         stageSketches.push(referenceItem({
           title: attribute.label,
