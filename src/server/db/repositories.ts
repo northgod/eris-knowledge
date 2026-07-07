@@ -1,11 +1,13 @@
 import crypto from "node:crypto";
 import type Database from "better-sqlite3";
 import type {
+  ApprovalRecord,
   ArtifactRecord,
   CutRecord,
   DetectionType,
   GateId,
   GateStatus,
+  OrchestratorTaskRecord,
   ProductionDetailPayload,
   ScanIssueRecord,
   SceneRecord
@@ -105,6 +107,70 @@ function listScanIssues(db: Database.Database): ScanIssueRecord[] {
 
 function scanIssuesForProduction(db: Database.Database, production: ProductionIssueScope): ScanIssueRecord[] {
   return listScanIssues(db).filter((issue) => issueBelongsToProduction(issue.relativePath, production));
+}
+
+function parseJsonStringArray(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function listOrchestratorTasks(db: Database.Database, productionId: string): OrchestratorTaskRecord[] {
+  const rows = db.prepare(`
+    SELECT
+      id,
+      production_id AS productionId,
+      artifact_id AS artifactId,
+      run_id AS runId,
+      gate_id AS gateId,
+      task_id AS taskId,
+      title,
+      status,
+      expected_outputs_json AS expectedOutputsJson,
+      context_paths_json AS contextPathsJson,
+      created_at AS createdAt
+    FROM orchestrator_tasks
+    WHERE production_id = ?
+    ORDER BY gate_id, created_at, task_id, id
+  `).all(productionId) as Array<Omit<OrchestratorTaskRecord, "expectedOutputs" | "contextPaths"> & {
+    expectedOutputsJson: string;
+    contextPathsJson: string;
+  }>;
+
+  return rows.map((row) => ({
+    id: row.id,
+    productionId: row.productionId,
+    artifactId: row.artifactId,
+    runId: row.runId,
+    gateId: row.gateId,
+    taskId: row.taskId,
+    title: row.title,
+    status: row.status,
+    expectedOutputs: parseJsonStringArray(row.expectedOutputsJson),
+    contextPaths: parseJsonStringArray(row.contextPathsJson),
+    createdAt: row.createdAt
+  }));
+}
+
+function listApprovals(db: Database.Database, productionId: string): ApprovalRecord[] {
+  return db.prepare(`
+    SELECT
+      id,
+      production_id AS productionId,
+      artifact_id AS artifactId,
+      gate_id AS gateId,
+      approval_id AS approvalId,
+      status,
+      decision,
+      actor,
+      decided_at AS decidedAt
+    FROM approvals
+    WHERE production_id = ?
+    ORDER BY gate_id, decided_at, approval_id, id
+  `).all(productionId) as ApprovalRecord[];
 }
 export function createRepositories(db: Database.Database) {
   return {
@@ -468,7 +534,9 @@ export function createRepositories(db: Database.Database) {
           scenes: sceneRows.map((scene) => ({ ...scene, cuts: cutsByScene.get(scene.id) ?? [] })),
           artifacts,
           manualNote: createRepositories(db).manual.getNote("production", productionId),
-          issues: scanIssuesForProduction(db, production)
+          issues: scanIssuesForProduction(db, production),
+          orchestratorTasks: listOrchestratorTasks(db, productionId),
+          approvals: listApprovals(db, productionId)
         };
       }
     }

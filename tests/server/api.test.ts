@@ -97,6 +97,34 @@ describe("API", () => {
         ]
       }
     ]);
+    repos.orchestrator.replaceTasks("story::prod", [
+      {
+        id: "task-1",
+        productionId: "story::prod",
+        artifactId: "artifact-1",
+        runId: "run-1",
+        gateId: "G1",
+        taskId: "draft-scene",
+        title: "Draft scene board",
+        status: "done",
+        expectedOutputsJson: JSON.stringify(["02_テキストコンテ.md"]),
+        contextPathsJson: JSON.stringify(["01_脚本.md"]),
+        createdAt: "2026-07-06T00:00:00.000Z"
+      }
+    ]);
+    repos.orchestrator.replaceApprovals("story::prod", [
+      {
+        id: "approval-1",
+        productionId: "story::prod",
+        artifactId: "artifact-1",
+        gateId: "G1",
+        approvalId: "approval-G1",
+        status: "approved",
+        decision: "LGTM",
+        actor: "north",
+        decidedAt: "2026-07-06T00:10:00.000Z"
+      }
+    ]);
 
     db.prepare(`
       INSERT INTO scan_issues (id, scan_run_id, severity, relative_path, issue_code, message)
@@ -134,6 +162,25 @@ describe("API", () => {
           details: "画面: City reveal\n参照ロール: hero.png"
         });
         expect(res.body.detail.artifacts[0]).toMatchObject({ kind: "text_storyboard", gate: "G1" });
+        expect(res.body.detail.orchestratorTasks[0]).toMatchObject({
+          id: "task-1",
+          gateId: "G1",
+          taskId: "draft-scene",
+          title: "Draft scene board",
+          status: "done",
+          expectedOutputs: ["02_テキストコンテ.md"],
+          contextPaths: ["01_脚本.md"],
+          createdAt: "2026-07-06T00:00:00.000Z"
+        });
+        expect(res.body.detail.approvals[0]).toMatchObject({
+          id: "approval-1",
+          gateId: "G1",
+          approvalId: "approval-G1",
+          status: "approved",
+          decision: "LGTM",
+          actor: "north",
+          decidedAt: "2026-07-06T00:10:00.000Z"
+        });
         expect(res.body.detail.issues).toHaveLength(1);
         expect(res.body.detail.issues[0]).toMatchObject({
           id: "issue-1",

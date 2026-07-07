@@ -1277,6 +1277,30 @@ body {
   margin-top: 14px;
 }
 
+.orchestrator-record-stack,
+.orchestrator-table-block {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.orchestrator-table-block {
+  overflow-x: auto;
+}
+
+.orchestrator-table-block > strong {
+  color: #1d3844;
+  font-size: 13px;
+}
+
+.orchestrator-table {
+  min-width: 860px;
+}
+
+.orchestrator-table td {
+  white-space: pre-line;
+}
+
 .scan-issue-list {
   display: grid;
   gap: 10px;

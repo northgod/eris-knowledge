@@ -397,6 +397,11 @@ function OriginalImageLink({
   );
 }
 
+function listCell(values: string[]): ReactNode {
+  if (values.length === 0) return "-";
+  return values.join("\n");
+}
+
 export function ProductionInsightPanel({
   detail,
   loading,
@@ -453,6 +458,9 @@ export function ProductionInsightPanel({
   const orchestratorArtifacts = detail.artifacts
     .filter((asset) => asset.kind === "codex_task" || asset.kind === "approval" || asset.kind === "orchestrator_state")
     .slice(0, 20);
+  const orchestratorTasks = (detail.orchestratorTasks ?? []).slice(0, 20);
+  const approvals = (detail.approvals ?? []).slice(0, 20);
+  const hasOrchestratorRecords = orchestratorArtifacts.length > 0 || orchestratorTasks.length > 0 || approvals.length > 0;
   const artifactsById = new Map(detail.artifacts.map((asset) => [asset.id, asset]));
   const sceneBoardImages = new Set<string>();
   const sceneBoards = detail.scenes.map((scene) => {
@@ -762,17 +770,84 @@ export function ProductionInsightPanel({
 
       <section className="insight-block orchestrator-block" aria-label="Orchestrator Records">
         <h3><FileText size={16} /> Orchestrator Records</h3>
-        {orchestratorArtifacts.length === 0 ? (
+        {!hasOrchestratorRecords ? (
           <p className="quiet-text">No orchestrator task, approval, or state records are indexed for this production.</p>
         ) : (
-          <ul className="asset-mini-list">
-            {orchestratorArtifacts.map((asset) => (
-              <li key={asset.id}>
-                <span>{asset.kind}</span>
-                <code>{asset.relativePath}</code>
-              </li>
-            ))}
-          </ul>
+          <div className="orchestrator-record-stack">
+            {orchestratorTasks.length > 0 && (
+              <div className="orchestrator-table-block">
+                <strong>Codex Tasks</strong>
+                <table className="detail-table orchestrator-table" aria-label="Codex task records">
+                  <thead>
+                    <tr>
+                      <th>Gate</th>
+                      <th>Task</th>
+                      <th>Title</th>
+                      <th>Status</th>
+                      <th>Expected Outputs</th>
+                      <th>Context Paths</th>
+                      <th>Created</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orchestratorTasks.map((task) => (
+                      <tr key={task.id}>
+                        <td>{task.gateId ?? "-"}</td>
+                        <td>{task.taskId ?? "-"}</td>
+                        <td>{task.title ?? "-"}</td>
+                        <td>{task.status ?? "-"}</td>
+                        <td>{listCell(task.expectedOutputs)}</td>
+                        <td>{listCell(task.contextPaths)}</td>
+                        <td>{task.createdAt ?? "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {approvals.length > 0 && (
+              <div className="orchestrator-table-block">
+                <strong>Approvals</strong>
+                <table className="detail-table orchestrator-table" aria-label="Approval records">
+                  <thead>
+                    <tr>
+                      <th>Gate</th>
+                      <th>Approval</th>
+                      <th>Status</th>
+                      <th>Decision</th>
+                      <th>Actor</th>
+                      <th>Decided</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {approvals.map((approval) => (
+                      <tr key={approval.id}>
+                        <td>{approval.gateId ?? "-"}</td>
+                        <td>{approval.approvalId ?? "-"}</td>
+                        <td>{approval.status ?? "-"}</td>
+                        <td>{approval.decision ?? "-"}</td>
+                        <td>{approval.actor ?? "-"}</td>
+                        <td>{approval.decidedAt ?? "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {orchestratorArtifacts.length > 0 && (
+              <div className="orchestrator-table-block">
+                <strong>Source Files</strong>
+                <ul className="asset-mini-list">
+                  {orchestratorArtifacts.map((asset) => (
+                    <li key={asset.id}>
+                      <span>{asset.kind}</span>
+                      <code>{asset.relativePath}</code>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         )}
       </section>
 

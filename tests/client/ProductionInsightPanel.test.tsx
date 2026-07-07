@@ -638,6 +638,34 @@ describe("ProductionInsightPanel", () => {
           manualNote: "",
           scenes: [],
           issues: [],
+          orchestratorTasks: [
+            {
+              id: "task-record-1",
+              productionId: "story::prod",
+              artifactId: "task-1",
+              runId: "run-1",
+              gateId: "G1",
+              taskId: "draft-scene",
+              title: "Draft scene board",
+              status: "done",
+              expectedOutputs: ["02_テキストコンテ.md"],
+              contextPaths: ["01_脚本.md"],
+              createdAt: "2026-07-06T00:00:00.000Z"
+            }
+          ],
+          approvals: [
+            {
+              id: "approval-record-1",
+              productionId: "story::prod",
+              artifactId: "approval-1",
+              gateId: "G2",
+              approvalId: "approval-G2",
+              status: "approved",
+              decision: "LGTM",
+              actor: "north",
+              decidedAt: "2026-07-06T00:10:00.000Z"
+            }
+          ],
           artifacts: [
             {
               id: "task-1",
@@ -681,6 +709,18 @@ describe("ProductionInsightPanel", () => {
     );
 
     const orchestratorRecords = screen.getByRole("region", { name: "Orchestrator Records" });
+    expect(within(orchestratorRecords).getByRole("table", { name: "Codex task records" })).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByRole("cell", { name: "G1" })).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByRole("cell", { name: "draft-scene" })).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByRole("cell", { name: "Draft scene board" })).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByRole("cell", { name: "done" })).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByRole("cell", { name: "02_テキストコンテ.md" })).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByRole("cell", { name: "01_脚本.md" })).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByRole("table", { name: "Approval records" })).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByRole("cell", { name: "approval-G2" })).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByRole("cell", { name: "approved" })).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByRole("cell", { name: "LGTM" })).toBeInTheDocument();
+    expect(within(orchestratorRecords).getByRole("cell", { name: "north" })).toBeInTheDocument();
     expect(within(orchestratorRecords).getByText("codex_task")).toBeInTheDocument();
     expect(within(orchestratorRecords).getByText("stories/story/02_Anime/storyboards/prod/codex_tasks/G1_task.json")).toBeInTheDocument();
     expect(within(orchestratorRecords).getByText("approval")).toBeInTheDocument();
