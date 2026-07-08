@@ -633,24 +633,28 @@ body {
 
 .scene-board-list {
   display: grid;
-  gap: 14px;
+  gap: 24px;
 }
 
 .scene-board-card {
   background: white;
   border: 1px solid #d9e1e5;
+  border-left: 5px solid #315c6f;
   border-radius: 8px;
+  box-shadow: 0 8px 18px rgba(22, 35, 43, 0.08);
   min-width: 0;
   overflow-x: auto;
-  padding: 14px;
+  padding: 16px 16px 18px;
 }
 
 .scene-board-heading {
   align-items: flex-start;
+  border-bottom: 1px solid #d9e1e5;
   display: flex;
   gap: 12px;
   justify-content: space-between;
   margin-bottom: 12px;
+  padding-bottom: 12px;
 }
 
 .scene-board-heading h4 {

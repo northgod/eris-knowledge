@@ -20,4 +20,11 @@ describe("client styles", () => {
       "grid-template-columns: minmax(var(--scene-text-min-width), 0.95fr) minmax(var(--scene-image-min-width), 1.05fr);"
     );
   });
+
+  it("visually separates scene board cards", () => {
+    expect(cssRule(".scene-board-list")).toContain("gap: 24px;");
+    expect(cssRule(".scene-board-card")).toContain("border-left: 5px solid #315c6f;");
+    expect(cssRule(".scene-board-card")).toContain("box-shadow: 0 8px 18px rgba(22, 35, 43, 0.08);");
+    expect(cssRule(".scene-board-heading")).toContain("border-bottom: 1px solid #d9e1e5;");
+  });
 });
