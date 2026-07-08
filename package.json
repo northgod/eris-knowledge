@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:watch": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/watch-dev.ps1",
     "dev:server": "tsx watch src/server/main.ts",
     "dev:client": "vite --host 127.0.0.1 --port 5174",
     "build": "tsc --noEmit && vite build",
